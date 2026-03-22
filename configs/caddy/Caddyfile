@@ -1,5 +1,4 @@
 {
-	email {$CADDY_EMAIL}
 	admin off
 }
 
