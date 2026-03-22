@@ -138,7 +138,7 @@ Path-prefix routing is more fragile than subdomains, so a few apps need special 
 
 - `qBittorrent` is proxied with upstream header overrides.
 - `webdav` is started with `--path-prefix /webdav`.
-- `portainer` is started with `--base-url /portainer`.
+- `portainer` is served by stripping the `/portainer` prefix at the proxy.
 
 The ARR apps also need their own base URLs set after first boot on the Pi:
 

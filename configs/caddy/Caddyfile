@@ -15,7 +15,7 @@
 	}
 
 	@portainer path /portainer /portainer/*
-	handle @portainer {
+	handle_path /portainer/* {
 		reverse_proxy portainer:9000
 	}
 

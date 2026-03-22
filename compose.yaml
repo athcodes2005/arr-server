@@ -124,8 +124,6 @@ services:
     restart: unless-stopped
     command:
       - --http-enabled
-      - --base-url
-      - /portainer
     volumes:
       - ./configs/portainer:/data
       - /var/run/docker.sock:/var/run/docker.sock
