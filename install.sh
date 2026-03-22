@@ -879,11 +879,35 @@ set_arr_base_urls() {
   sed -i 's|<UrlBase>.*</UrlBase>|<UrlBase>/prowlarr</UrlBase>|' "${STACK_DIR}/configs/prowlarr/config.xml"
   sed -i 's|<UrlBase>.*</UrlBase>|<UrlBase>/sonarr</UrlBase>|' "${STACK_DIR}/configs/sonarr/config.xml"
   sed -i 's|<UrlBase>.*</UrlBase>|<UrlBase>/radarr</UrlBase>|' "${STACK_DIR}/configs/radarr/config.xml"
-  if grep -q '^  base_url:' "${STACK_DIR}/configs/bazarr/config/config.yaml"; then
-    sed -i "s|^  base_url:.*$|  base_url: '/bazarr'|" "${STACK_DIR}/configs/bazarr/config/config.yaml"
-  else
-    printf "\ngeneral:\n  base_url: '/bazarr'\n" >> "${STACK_DIR}/configs/bazarr/config/config.yaml"
-  fi
+  python3 - "${STACK_DIR}/configs/bazarr/config/config.yaml" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text()
+lines = text.splitlines()
+updated = False
+in_general = False
+
+for index, line in enumerate(lines):
+    if line.startswith("general:"):
+        in_general = True
+        continue
+    if in_general and line and not line.startswith(" "):
+        break
+    if in_general and line.startswith("  base_url:"):
+        lines[index] = "  base_url: '/bazarr'"
+        updated = True
+        break
+
+if not updated:
+    if lines and lines[-1] != "":
+        lines.append("")
+    lines.append("general:")
+    lines.append("  base_url: '/bazarr'")
+
+path.write_text("\n".join(lines) + "\n")
+PY
 
   compose_cmd restart prowlarr sonarr radarr bazarr
 }
