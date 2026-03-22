@@ -33,6 +33,7 @@ This repository is intentionally being prepared locally and should only be clone
 - `data/`: torrents and media paths shared across ARR apps
 - `logs/`: app and proxy log files
 - `scripts/`: helper scripts used by containers or Pi-side operations
+- `pi-prequisites.md`: Raspberry Pi server prep checklist
 
 ## Services
 
