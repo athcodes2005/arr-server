@@ -500,7 +500,7 @@ EOF
         container: bazarr
         widget:
           type: bazarr
-          url: http://bazarr:6767
+          url: http://bazarr:6767/bazarr
           key: "{{HOMEPAGE_VAR_BAZARR_API_KEY}}"
     - FlareSolverr:
         icon: flaresolverr.png
