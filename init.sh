@@ -50,13 +50,21 @@ prompt_value() {
 
   while true; do
     if [ "${secret}" = "1" ]; then
-      printf '%s [%s]: ' "${label}" "${default_value}" >&2
+      if [ -n "${default_value}" ]; then
+        printf '%s [%s]: ' "${label}" "${default_value}" >&2
+      else
+        printf '%s: ' "${label}" >&2
+      fi
       stty -echo
       IFS= read -r value
       stty echo
       printf '\n' >&2
     else
-      printf '%s [%s]: ' "${label}" "${default_value}" >&2
+      if [ -n "${default_value}" ]; then
+        printf '%s [%s]: ' "${label}" "${default_value}" >&2
+      else
+        printf '%s: ' "${label}" >&2
+      fi
       IFS= read -r value
     fi
 
@@ -119,6 +127,10 @@ detect_timezone() {
 
 random_secret() {
   openssl rand -hex 32
+}
+
+escape_env_value() {
+  printf '%s' "$1" | sed 's/\$/$$/g'
 }
 
 ensure_prerequisites() {
@@ -193,6 +205,15 @@ write_env_file() {
   local caddy_email="$4"
   local timezone_value="$5"
   local portainer_hash="$6"
+  local escaped_duck_token
+  local escaped_caddy_email
+  local escaped_master_password
+  local escaped_portainer_hash
+
+  escaped_duck_token="$(escape_env_value "${duck_token}")"
+  escaped_caddy_email="$(escape_env_value "${caddy_email}")"
+  escaped_master_password="$(escape_env_value "${MASTER_PASSWORD_VALUE}")"
+  escaped_portainer_hash="$(escape_env_value "${portainer_hash}")"
 
   cat > "${ENV_FILE}" <<EOF
 PUID=$(id -u)
@@ -202,19 +223,19 @@ UMASK=002
 
 DUCKDNS_SUBDOMAIN=${duck_subdomain}
 DUCKDNS_DOMAIN=${duck_domain}
-DUCKDNS_TOKEN=${duck_token}
+DUCKDNS_TOKEN=${escaped_duck_token}
 DUCKDNS_UPDATE_INTERVAL=300
 
-CADDY_EMAIL=${caddy_email}
+CADDY_EMAIL=${escaped_caddy_email}
 
 MASTER_USERNAME=${MASTER_USERNAME}
-MASTER_PASSWORD=${MASTER_PASSWORD_VALUE}
+MASTER_PASSWORD=${escaped_master_password}
 
 QBITTORRENT_WEBUI_PORT=8080
 QBITTORRENT_TORRENT_PORT=6881
 QBITTORRENT_TRACKER_LIST_URL=${TRACKER_LIST_URL}
 
-PORTAINER_ADMIN_PASSWORD_HASH=${portainer_hash}
+PORTAINER_ADMIN_PASSWORD_HASH=${escaped_portainer_hash}
 PROWLARR_API_KEY=
 SONARR_API_KEY=
 RADARR_API_KEY=
@@ -286,9 +307,10 @@ EOF
 }
 
 write_caddyfile() {
-  cat > "${STACK_DIR}/configs/caddy/Caddyfile" <<'EOF'
+  cat > "${STACK_DIR}/configs/caddy/Caddyfile" <<EOF
 {
 	admin off
+$(if [ -n "${CADDY_EMAIL_VALUE}" ]; then printf '\temail %s\n' "${CADDY_EMAIL_VALUE}"; fi)
 }
 
 {$DUCKDNS_DOMAIN} {
@@ -564,6 +586,9 @@ services:
       - radarr
       - bazarr
       - webdav
+    environment:
+      DUCKDNS_DOMAIN: ${DUCKDNS_DOMAIN}
+      CADDY_EMAIL: ${CADDY_EMAIL}
     ports:
       - "80:80"
       - "443:443"
@@ -595,6 +620,7 @@ services:
     image: curlimages/curl:8.12.1
     container_name: duckdns-updater
     restart: unless-stopped
+    user: "0:0"
     depends_on:
       - unbound
     entrypoint: ["/bin/sh", "/scripts/duckdns-update.sh"]
@@ -934,8 +960,8 @@ main() {
 
   timezone_default="$(detect_timezone)"
 
-  duck_subdomain="$(prompt_value "DuckDNS subdomain" "mypi2025")"
-  duck_domain="$(prompt_value "Public DuckDNS domain" "${duck_subdomain}.duckdns.org")"
+  duck_subdomain="$(prompt_value "DuckDNS subdomain" "")"
+  duck_domain="${duck_subdomain}.duckdns.org"
   duck_token="$(prompt_value "DuckDNS token" "" 1)"
   caddy_email="$(prompt_value "Caddy email (optional)" "")"
   TZ_VALUE="$(prompt_value "Timezone" "${timezone_default}")"
@@ -950,6 +976,9 @@ main() {
   fi
 
   DUCKDNS_DOMAIN_VALUE="${duck_domain}"
+  CADDY_EMAIL_VALUE="${caddy_email}"
+
+  info "Using public domain: ${DUCKDNS_DOMAIN_VALUE}"
 
   info "Preparing runtime directories."
   prepare_directories
