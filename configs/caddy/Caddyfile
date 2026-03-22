@@ -1,0 +1,62 @@
+{
+	email {$CADDY_EMAIL}
+	admin off
+}
+
+{$DUCKDNS_DOMAIN} {
+	encode zstd gzip
+
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 10MiB
+			roll_keep 10
+			roll_keep_for 720h
+		}
+		format json
+	}
+
+	@portainer path /portainer /portainer/*
+	handle @portainer {
+		reverse_proxy portainer:9000
+	}
+
+	redir /qbittorrent /qbittorrent/ 308
+	handle_path /qbittorrent/* {
+		reverse_proxy qbittorrent:8080 {
+			header_up Host qbittorrent:8080
+			header_up Origin http://qbittorrent:8080
+			header_up Referer http://qbittorrent:8080
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	@prowlarr path /prowlarr /prowlarr/*
+	handle @prowlarr {
+		reverse_proxy prowlarr:9696
+	}
+
+	@sonarr path /sonarr /sonarr/*
+	handle @sonarr {
+		reverse_proxy sonarr:8989
+	}
+
+	@radarr path /radarr /radarr/*
+	handle @radarr {
+		reverse_proxy radarr:7878
+	}
+
+	@bazarr path /bazarr /bazarr/*
+	handle @bazarr {
+		reverse_proxy bazarr:6767
+	}
+
+	@webdav path /webdav /webdav/*
+	handle @webdav {
+		reverse_proxy webdav:5000
+	}
+
+	handle {
+		reverse_proxy homepage:3000
+	}
+}

@@ -1,0 +1,11 @@
+title: ARR Server
+description: Media, automation, and infrastructure dashboard
+favicon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/homepage.png
+headerStyle: clean
+layout:
+  Infrastructure:
+    style: row
+    columns: 3
+  Media:
+    style: row
+    columns: 4

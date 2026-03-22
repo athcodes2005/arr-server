@@ -1,0 +1,247 @@
+name: arr-server
+
+x-common-environment: &common-environment
+  PUID: ${PUID}
+  PGID: ${PGID}
+  TZ: ${TZ}
+  UMASK: ${UMASK}
+
+x-common-logging: &common-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-common-dns: &common-dns
+  dns:
+    - 172.28.0.53
+    - fd42:4242:4242::53
+
+x-common-network: &common-network
+  arr_net: {}
+
+services:
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: caddy
+    restart: unless-stopped
+    depends_on:
+      - homepage
+      - portainer
+      - qbittorrent
+      - prowlarr
+      - sonarr
+      - radarr
+      - bazarr
+      - webdav
+    environment:
+      DUCKDNS_DOMAIN: ${DUCKDNS_DOMAIN}
+      CADDY_EMAIL: ${CADDY_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./configs/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./configs/caddy/data:/data
+      - ./configs/caddy/config:/config
+      - ./logs/caddy:/var/log/caddy
+    logging: *common-logging
+    dns:
+      - 172.28.0.53
+      - fd42:4242:4242::53
+    networks: *common-network
+
+  unbound:
+    image: mvance/unbound:1.22.0
+    container_name: unbound
+    restart: unless-stopped
+    volumes:
+      - ./configs/unbound/unbound.conf:/opt/unbound/etc/unbound/unbound.conf:ro
+      - ./logs/unbound:/var/log/unbound
+    logging: *common-logging
+    networks:
+      arr_net:
+        ipv4_address: 172.28.0.53
+        ipv6_address: fd42:4242:4242::53
+
+  duckdns-updater:
+    image: curlimages/curl:8.11.1
+    container_name: duckdns-updater
+    restart: unless-stopped
+    depends_on:
+      - unbound
+    entrypoint: ["/bin/sh", "/scripts/duckdns-update.sh"]
+    environment:
+      DUCKDNS_SUBDOMAIN: ${DUCKDNS_SUBDOMAIN}
+      DUCKDNS_TOKEN: ${DUCKDNS_TOKEN}
+      DUCKDNS_UPDATE_INTERVAL: ${DUCKDNS_UPDATE_INTERVAL}
+      TZ: ${TZ}
+    volumes:
+      - ./scripts/duckdns-update.sh:/scripts/duckdns-update.sh:ro
+      - ./logs/duckdns-updater:/logs/duckdns-updater
+    logging: *common-logging
+    dns:
+      - 172.28.0.53
+      - fd42:4242:4242::53
+    networks: *common-network
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    depends_on:
+      - portainer
+      - qbittorrent
+      - prowlarr
+      - sonarr
+      - radarr
+      - bazarr
+      - webdav
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: ${DUCKDNS_DOMAIN}
+      HOMEPAGE_VAR_DUCKDNS_DOMAIN: ${DUCKDNS_DOMAIN}
+      HOMEPAGE_VAR_QBITTORRENT_USERNAME: ${QBITTORRENT_USERNAME}
+      HOMEPAGE_VAR_QBITTORRENT_PASSWORD: ${QBITTORRENT_PASSWORD}
+      HOMEPAGE_VAR_PORTAINER_API_KEY: ${PORTAINER_API_KEY}
+      HOMEPAGE_VAR_PROWLARR_API_KEY: ${PROWLARR_API_KEY}
+      HOMEPAGE_VAR_SONARR_API_KEY: ${SONARR_API_KEY}
+      HOMEPAGE_VAR_RADARR_API_KEY: ${RADARR_API_KEY}
+      HOMEPAGE_VAR_BAZARR_API_KEY: ${BAZARR_API_KEY}
+    volumes:
+      - ./configs/homepage:/app/config
+      - ./logs/homepage:/app/config/logs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    logging: *common-logging
+    <<: *common-dns
+    networks: *common-network
+
+  portainer:
+    image: portainer/portainer-ce:lts
+    container_name: portainer
+    restart: unless-stopped
+    command:
+      - --http-enabled
+      - --base-url
+      - /portainer
+    volumes:
+      - ./configs/portainer:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    logging: *common-logging
+    <<: *common-dns
+    networks: *common-network
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: unless-stopped
+    environment:
+      <<: *common-environment
+      WEBUI_PORT: ${QBITTORRENT_WEBUI_PORT}
+      TORRENTING_PORT: ${QBITTORRENT_TORRENT_PORT}
+    ports:
+      - "${QBITTORRENT_TORRENT_PORT}:${QBITTORRENT_TORRENT_PORT}"
+      - "${QBITTORRENT_TORRENT_PORT}:${QBITTORRENT_TORRENT_PORT}/udp"
+    volumes:
+      - ./configs/qbittorrent:/config
+      - ./logs/qbittorrent:/config/qBittorrent/logs
+      - ./data:/data
+    logging: *common-logging
+    <<: *common-dns
+    networks: *common-network
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    environment:
+      <<: *common-environment
+    volumes:
+      - ./configs/prowlarr:/config
+      - ./logs/prowlarr:/config/logs
+    logging: *common-logging
+    <<: *common-dns
+    networks: *common-network
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    environment:
+      <<: *common-environment
+    volumes:
+      - ./configs/sonarr:/config
+      - ./logs/sonarr:/config/logs
+      - ./data:/data
+    logging: *common-logging
+    <<: *common-dns
+    networks: *common-network
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    environment:
+      <<: *common-environment
+    volumes:
+      - ./configs/radarr:/config
+      - ./logs/radarr:/config/logs
+      - ./data:/data
+    logging: *common-logging
+    <<: *common-dns
+    networks: *common-network
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    restart: unless-stopped
+    environment:
+      <<: *common-environment
+    volumes:
+      - ./configs/bazarr:/config
+      - ./logs/bazarr:/config/logs
+      - ./data:/data
+    logging: *common-logging
+    <<: *common-dns
+    networks: *common-network
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: info
+      TZ: ${TZ}
+    logging: *common-logging
+    <<: *common-dns
+    networks: *common-network
+
+  webdav:
+    image: sigoden/dufs:latest
+    container_name: webdav
+    restart: unless-stopped
+    command:
+      - /data
+      - -p
+      - "5000"
+      - -a
+      - ${WEBDAV_USERNAME}:${WEBDAV_PASSWORD}@/:rw
+      - --allow-search
+      - --path-prefix
+      - /webdav
+    volumes:
+      - ./data/media:/data
+      - ./logs/webdav:/logs
+    logging: *common-logging
+    <<: *common-dns
+    networks: *common-network
+
+networks:
+  arr_net:
+    name: arr_net
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+          gateway: 172.28.0.1
+        - subnet: fd42:4242:4242::/64
+          gateway: fd42:4242:4242::1
