@@ -47,9 +47,14 @@ prompt_value() {
   local default_value="$2"
   local secret="${3:-0}"
   local value
+  local interactive_tty=0
+
+  if [ -t 0 ]; then
+    interactive_tty=1
+  fi
 
   while true; do
-    if [ "${secret}" = "1" ]; then
+    if [ "${secret}" = "1" ] && [ "${interactive_tty}" = "1" ]; then
       if [ -n "${default_value}" ]; then
         printf '%s [%s]: ' "${label}" "${default_value}" >&2
       else
@@ -83,18 +88,31 @@ prompt_password() {
   local label="$1"
   local first
   local second
+  local interactive_tty=0
+
+  if [ -t 0 ]; then
+    interactive_tty=1
+  fi
 
   while true; do
     printf '%s: ' "${label}" >&2
-    stty -echo
+    if [ "${interactive_tty}" = "1" ]; then
+      stty -echo
+    fi
     IFS= read -r first
-    stty echo
+    if [ "${interactive_tty}" = "1" ]; then
+      stty echo
+    fi
     printf '\n' >&2
 
     printf 'Confirm %s: ' "${label}" >&2
-    stty -echo
+    if [ "${interactive_tty}" = "1" ]; then
+      stty -echo
+    fi
     IFS= read -r second
-    stty echo
+    if [ "${interactive_tty}" = "1" ]; then
+      stty echo
+    fi
     printf '\n' >&2
 
     if [ -z "${first}" ]; then
