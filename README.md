@@ -130,6 +130,8 @@ Logs are organized under `logs/`.
 
 Docker JSON logs are also rotated with per-container limits so runaway stdout logging is capped.
 
+Some containers also write directly into the repo-mounted `logs/` directories, including Unbound and the DuckDNS updater.
+
 ## App Compatibility Notes
 
 Path-prefix routing is more fragile than subdomains, so a few apps need special handling.

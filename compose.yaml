@@ -70,6 +70,7 @@ services:
     image: curlimages/curl:8.11.1
     container_name: duckdns-updater
     restart: unless-stopped
+    user: "0:0"
     depends_on:
       - unbound
     entrypoint: ["/bin/sh", "/scripts/duckdns-update.sh"]
