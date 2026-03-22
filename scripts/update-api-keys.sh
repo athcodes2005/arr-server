@@ -24,15 +24,7 @@ extract_bazarr_key() {
     return 0
   fi
 
-  awk '
-    $1 == "auth:" { in_auth=1; next }
-    in_auth && $1 ~ /^[^[:space:]]/ { exit }
-    in_auth && $1 == "apikey:" {
-      gsub(/'\''/, "", $2)
-      print $2
-      exit
-    }
-  ' "$file"
+  sed -n "/^auth:/,/^[^[:space:]]/ s/^[[:space:]]*apikey:[[:space:]]*//p" "$file" | head -n 1 | sed "s/'//g"
 }
 
 set_env_value() {
