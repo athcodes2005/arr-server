@@ -290,7 +290,7 @@ write_unbound_files() {
   cat > "${STACK_DIR}/configs/unbound/Dockerfile" <<'EOF'
 FROM alpine:3.20
 
-RUN apk add --no-cache unbound
+RUN apk add --no-cache ca-certificates unbound && update-ca-certificates
 
 CMD ["unbound", "-d", "-c", "/etc/unbound/unbound.conf"]
 EOF
@@ -313,6 +313,7 @@ server:
   use-syslog: no
   prefetch: yes
   rrset-roundrobin: yes
+  tls-cert-bundle: "/etc/ssl/certs/ca-certificates.crt"
 
 forward-zone:
   name: "."
