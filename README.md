@@ -116,6 +116,8 @@ All application containers use Unbound as their DNS server.
 
 This keeps DNS resolution centralized and allows the stack to use IPv6-capable upstream connectivity when the Pi has it.
 
+The Unbound service is built from the repo so it stays portable across Raspberry Pi architectures.
+
 ## Logging
 
 Logs are organized under `logs/`.
