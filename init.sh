@@ -842,6 +842,8 @@ prepare_directories() {
     "${STACK_DIR}/data/media/movies" \
     "${STACK_DIR}/data/media/tv" \
     "${STACK_DIR}/scripts"
+
+  chmod 0777 "${STACK_DIR}/logs/unbound"
 }
 
 wait_for_file() {
