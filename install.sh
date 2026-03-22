@@ -486,6 +486,10 @@ EOF
     disk: /
 EOF
 
+  cat > "${STACK_DIR}/configs/homepage/bookmarks.yaml" <<'EOF'
+[]
+EOF
+
   cat > "${STACK_DIR}/configs/homepage/docker.yaml" <<'EOF'
 - arr-server:
     socket: /var/run/docker.sock
@@ -493,6 +497,10 @@ EOF
 
   cat > "${STACK_DIR}/configs/homepage/custom.css" <<'EOF'
 footer {
+  display: none !important;
+}
+
+.bookmarks {
   display: none !important;
 }
 EOF
@@ -946,6 +954,23 @@ Manual app-auth steps still required:
   2. Open https://${DUCKDNS_DOMAIN_VALUE}/sonarr/ and configure its built-in login manually.
   3. Open https://${DUCKDNS_DOMAIN_VALUE}/radarr/ and configure its built-in login manually.
   4. Open https://${DUCKDNS_DOMAIN_VALUE}/bazarr/ and configure its built-in login manually.
+
+Post-install app setup:
+  1. In Prowlarr, add your indexers first.
+  2. For any indexer that needs Cloudflare solving, edit that indexer in Prowlarr and set its FlareSolverr / solver URL to:
+     http://flaresolverr:8191
+  3. In Prowlarr, go to Settings -> Apps -> Add Application and link Sonarr with:
+     - Server: http://sonarr:8989
+     - API key: copy it from Sonarr -> Settings -> General
+     - Sync level: Full Sync is the easiest option if you want Prowlarr to manage indexers for Sonarr
+  4. In Prowlarr, go to Settings -> Apps -> Add Application and link Radarr with:
+     - Server: http://radarr:7878
+     - API key: copy it from Radarr -> Settings -> General
+     - Sync level: Full Sync is the easiest option if you want Prowlarr to manage indexers for Radarr
+  5. In qBittorrent, keep downloads inside /data/torrents so Sonarr and Radarr can import without path mismatches.
+  6. In Sonarr, use /data/media/tv as the root folder and set the qBittorrent download client category to sonarr.
+  7. In Radarr, use /data/media/movies as the root folder and set the qBittorrent download client category to radarr.
+  8. If you use qBittorrent categories, point them to /data/torrents/sonarr and /data/torrents/radarr so completed downloads stay organized while still sharing the same /data volume for imports and hardlinks.
 
 Already configured by this installer:
   - qBittorrent username: ${MASTER_USERNAME}
