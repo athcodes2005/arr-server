@@ -273,7 +273,7 @@ while true; do
   ipv6="$(curl -fs6 --max-time 15 https://api64.ipify.org || true)"
 
   if [ -n "${ipv6}" ]; then
-    response="$(curl -fsS "https://www.duckdns.org/update?domains=${DUCKDNS_SUBDOMAIN}&token=${DUCKDNS_TOKEN}&ipv6=${ipv6}&clear=true" || true)"
+    response="$(curl -fsS "https://www.duckdns.org/update?domains=${DUCKDNS_SUBDOMAIN}&token=${DUCKDNS_TOKEN}&ipv6=${ipv6}&verbose=true" || true)"
     printf '%s update=%s ipv6=%s response=%s\n' "$(date -Iseconds)" "${DUCKDNS_SUBDOMAIN}" "${ipv6}" "${response}" >> "${log_file}"
   else
     printf '%s update=%s ipv6=unavailable\n' "$(date -Iseconds)" "${DUCKDNS_SUBDOMAIN}" >> "${log_file}"
