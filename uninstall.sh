@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STACK_DIR="${ROOT_DIR}/.arr-server"
 ENV_FILE="${STACK_DIR}/.env"
 COMPOSE_FILE="${STACK_DIR}/compose.yaml"
+DUCKDNS_CRON_TAG="# arr-server-duckdns"
 
 info() {
   printf '[info] %s\n' "$*"
@@ -49,6 +50,12 @@ main() {
     info "Stopping and removing containers."
     compose_cmd down --remove-orphans --rmi local || warn "docker compose down reported a warning."
   fi
+
+  info "Removing DuckDNS cron job."
+  tmp_file="$(mktemp)"
+  crontab -l 2>/dev/null | grep -v 'arr-server-duckdns' > "${tmp_file}" || true
+  crontab "${tmp_file}" 2>/dev/null || true
+  rm -f "${tmp_file}"
 
   info "Removing generated runtime files."
   rm -rf "${STACK_DIR}"

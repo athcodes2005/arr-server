@@ -8,6 +8,7 @@ COMPOSE_FILE="${STACK_DIR}/compose.yaml"
 
 MASTER_USERNAME="admin"
 TRACKER_LIST_URL="https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt"
+DUCKDNS_CRON_TAG="# arr-server-duckdns"
 
 info() {
   printf '[info] %s\n' "$*"
@@ -160,7 +161,7 @@ ensure_prerequisites() {
 
   if command_exists apt-get; then
     run_root apt-get update -y
-    run_root apt-get install -y ca-certificates curl git openssl python3 python3-venv jq
+    run_root apt-get install -y ca-certificates cron curl git openssl python3 python3-venv jq
   else
     die "This installer currently supports apt-based Raspberry Pi / Debian systems only."
   fi
@@ -173,6 +174,7 @@ ensure_prerequisites() {
   fi
 
   run_root systemctl enable --now docker
+  run_root systemctl enable --now cron
 
   if ! id -nG "${USER}" | grep -qw docker; then
     info "Adding ${USER} to the docker group."
@@ -266,24 +268,52 @@ write_duckdns_updater() {
 #!/bin/sh
 set -eu
 
-log_file="/logs/duckdns-updater.log"
-mkdir -p /logs
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+ROOT_DIR="$(CDPATH= cd -- "${SCRIPT_DIR}/.." && pwd)"
+ENV_FILE="${ROOT_DIR}/.env"
+LOG_DIR="${ROOT_DIR}/logs/duckdns-updater"
+LOG_FILE="${LOG_DIR}/duckdns-updater.log"
 
-while true; do
-  ipv6="$(curl -fs6 --max-time 15 https://api64.ipify.org || true)"
+if [ ! -f "${ENV_FILE}" ]; then
+  echo "error: missing ${ENV_FILE}" >&2
+  exit 1
+fi
 
-  if [ -n "${ipv6}" ]; then
-    response="$(curl -fsS "https://www.duckdns.org/update?domains=${DUCKDNS_SUBDOMAIN}&token=${DUCKDNS_TOKEN}&ipv6=${ipv6}&verbose=true" || true)"
-    printf '%s update=%s ipv6=%s response=%s\n' "$(date -Iseconds)" "${DUCKDNS_SUBDOMAIN}" "${ipv6}" "${response}" >> "${log_file}"
-  else
-    printf '%s update=%s ipv6=unavailable\n' "$(date -Iseconds)" "${DUCKDNS_SUBDOMAIN}" >> "${log_file}"
-  fi
+mkdir -p "${LOG_DIR}"
 
-  sleep "${DUCKDNS_UPDATE_INTERVAL:-300}"
-done
+set -a
+# shellcheck disable=SC1090
+. "${ENV_FILE}"
+set +a
+
+ipv6="$(curl -fs6 --max-time 15 https://api64.ipify.org || true)"
+
+if [ -n "${ipv6}" ]; then
+  response="$(curl -fsS "https://www.duckdns.org/update?domains=${DUCKDNS_SUBDOMAIN}&token=${DUCKDNS_TOKEN}&ipv6=${ipv6}&verbose=true" | tr '\n' ' ' || true)"
+  printf '%s update=%s ipv6=%s response=%s\n' "$(date -Iseconds)" "${DUCKDNS_SUBDOMAIN}" "${ipv6}" "${response}" >> "${LOG_FILE}"
+else
+  printf '%s update=%s ipv6=unavailable\n' "$(date -Iseconds)" "${DUCKDNS_SUBDOMAIN}" >> "${LOG_FILE}"
+fi
 EOF
 
   chmod +x "${STACK_DIR}/scripts/duckdns-update.sh"
+}
+
+setup_duckdns_cron() {
+  local cron_file
+  cron_file="$(mktemp)"
+
+  {
+    crontab -l 2>/dev/null | grep -v 'arr-server-duckdns' || true
+    printf '*/5 * * * * %s >/dev/null 2>&1 %s\n' "${STACK_DIR}/scripts/duckdns-update.sh" "${DUCKDNS_CRON_TAG}"
+  } > "${cron_file}"
+
+  crontab "${cron_file}"
+  rm -f "${cron_file}"
+}
+
+run_duckdns_update_once() {
+  "${STACK_DIR}/scripts/duckdns-update.sh"
 }
 
 write_unbound_files() {
@@ -643,26 +673,6 @@ services:
         ipv4_address: 172.28.0.53
         ipv6_address: fd42:4242:4242::53
 
-  duckdns-updater:
-    image: curlimages/curl:8.12.1
-    container_name: duckdns-updater
-    restart: unless-stopped
-    user: "0:0"
-    depends_on:
-      - unbound
-    entrypoint: ["/bin/sh", "/scripts/duckdns-update.sh"]
-    environment:
-      DUCKDNS_SUBDOMAIN: ${DUCKDNS_SUBDOMAIN}
-      DUCKDNS_TOKEN: ${DUCKDNS_TOKEN}
-      DUCKDNS_UPDATE_INTERVAL: ${DUCKDNS_UPDATE_INTERVAL}
-      TZ: ${TZ}
-    volumes:
-      - ./scripts/duckdns-update.sh:/scripts/duckdns-update.sh:ro
-      - ./logs/duckdns-updater:/logs
-    logging: *common-logging
-    <<: *common-dns
-    networks: *common-network
-
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
@@ -1008,6 +1018,11 @@ Already configured by this installer:
 Generated runtime files live in:
   ${STACK_DIR}
 
+DuckDNS updater:
+  - runs on the Pi host via cron every 5 minutes
+  - script path: ${STACK_DIR}/scripts/duckdns-update.sh
+  - log file: ${STACK_DIR}/logs/duckdns-updater/duckdns-updater.log
+
 To remove everything later, run:
   ./uninstall.sh
 EOF
@@ -1065,6 +1080,10 @@ main() {
   write_homepage_files
   write_qbittorrent_config "${qbit_hash}"
   write_compose_file
+
+  info "Installing DuckDNS cron job on the Pi host."
+  setup_duckdns_cron
+  run_duckdns_update_once
 
   info "Rendering docker compose config."
   compose_cmd config >/dev/null
