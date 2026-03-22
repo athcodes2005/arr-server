@@ -109,6 +109,8 @@ After the apps generate their config files, you can sync those ARR API keys back
 ./scripts/update-api-keys.sh
 ```
 
+Homepage custom styling can be adjusted in `configs/homepage/custom.css`.
+
 ## Networking Design
 
 The stack uses one shared Docker network named `arr_net`.
