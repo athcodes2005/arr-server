@@ -103,6 +103,12 @@ Optional values you can fill later after the first boot:
 
 These optional API keys are only used by Homepage widgets.
 
+After the apps generate their config files, you can sync those ARR API keys back into `.env` automatically:
+
+```bash
+./scripts/update-api-keys.sh
+```
+
 ## Networking Design
 
 The stack uses one shared Docker network named `arr_net`.
@@ -177,6 +183,14 @@ After the repo is cloned on the Pi and `.env` is filled:
 docker compose pull
 docker compose up -d
 ```
+
+For a guided first-run setup, use:
+
+```bash
+./initial.sh
+```
+
+This script helps create or update `.env`, lets you choose credentials, optionally validates the Compose file, and can pull and start the stack.
 
 ## Validation Checklist On The Pi
 
