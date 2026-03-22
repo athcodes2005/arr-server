@@ -331,7 +331,7 @@ write_caddyfile() {
 $(if [ -n "${CADDY_EMAIL_VALUE}" ]; then printf '\temail %s\n' "${CADDY_EMAIL_VALUE}"; fi)
 }
 
-{$DUCKDNS_DOMAIN} {
+{\$DUCKDNS_DOMAIN} {
 	encode zstd gzip
 
 	log {
