@@ -155,3 +155,4 @@ After the stack starts for the first time:
 4. set Bazarr base URL to `/bazarr`
 5. change qBittorrent Web UI credentials and keep `.env` aligned with the final values
 6. add Homepage API keys if you want widget status and metrics
+7. run `./scripts/configure-base-urls.sh` after the first app startup, then restart `prowlarr`, `sonarr`, `radarr`, and `bazarr`

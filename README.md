@@ -147,7 +147,12 @@ The ARR apps also need their own base URLs set after first boot on the Pi:
 - Radarr: `/radarr`
 - Bazarr: `/bazarr`
 
-These values are usually set from each app's web UI after its first startup because the exact config files are version-sensitive.
+After the apps generate their initial config files, you can set these automatically from the repo root:
+
+```bash
+./scripts/configure-base-urls.sh
+docker compose restart prowlarr sonarr radarr bazarr
+```
 
 qBittorrent also needs its final Web UI credentials set after first boot.
 Use the password shown by qBittorrent on its first launch, then change it in the qBittorrent UI and keep `.env` in sync so the Homepage widget can authenticate.
