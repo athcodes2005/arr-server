@@ -125,6 +125,7 @@ That means:
 - port `80` must be reachable from the public internet for certificate issuance
 - port `443` must be reachable for normal HTTPS access
 - public DNS for the DuckDNS hostname must point at the Pi's current public IP
+- if both IPv4 and IPv6 are published for the hostname, both must reach this Pi
 
 ## Deployment Prep
 

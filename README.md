@@ -157,7 +157,7 @@ Use the password shown by qBittorrent on its first launch, then change it in the
 The project keeps DuckDNS for dynamic DNS only.
 
 - `duckdns-updater` updates the DuckDNS record every 5 minutes
-- it only pushes the current public IPv6 address
+- it pushes the current public IPv4 and IPv6 addresses when available
 - certificate issuance is handled by Caddy over `HTTP-01`
 
 There is no TXT-record challenge workflow in this repository.
