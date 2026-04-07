@@ -278,6 +278,176 @@ for service, url, api_key in targets:
 PY
 }
 
+configure_prowlarr_integrations() {
+  local compose_project network_name
+
+  compose_project="${COMPOSE_PROJECT_NAME:-$(basename "${ROOT_DIR}")}"
+  network_name="${compose_project}_arr_net"
+
+  python3 - "${ROOT_DIR}" "${network_name}" <<'PY'
+from pathlib import Path
+import copy
+import json
+import re
+import subprocess
+import sys
+import time
+
+root_dir = Path(sys.argv[1])
+network_name = sys.argv[2]
+
+docker_prefix = ["docker"]
+if subprocess.run(["docker", "info"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0:
+    docker_prefix = ["sudo", "docker"]
+
+def extract_xml_api_key(path: Path) -> str:
+    match = re.search(r"<ApiKey>([^<]+)</ApiKey>", path.read_text())
+    if not match:
+        raise SystemExit(f"[bootstrap-error] Missing ApiKey in {path}")
+    return match.group(1)
+
+def run_request(method: str, url: str, api_key: str, payload=None) -> str:
+    cmd = docker_prefix + [
+        "run", "--rm", "--network", network_name,
+        "curlimages/curl:8.12.1",
+        "-fsS",
+        "-X", method,
+        "-H", f"X-Api-Key: {api_key}",
+    ]
+    if payload is not None:
+        cmd += ["-H", "Content-Type: application/json", "--data", json.dumps(payload)]
+    cmd.append(url)
+    return subprocess.check_output(cmd, text=True, stderr=subprocess.STDOUT)
+
+def request_json(method: str, url: str, api_key: str, payload=None):
+    return json.loads(run_request(method, url, api_key, payload))
+
+def wait_for_json(url: str, api_key: str, attempts: int = 30, sleep_seconds: int = 2):
+    last_error = None
+    for _ in range(attempts):
+        try:
+            return request_json("GET", url, api_key)
+        except subprocess.CalledProcessError as exc:
+            last_error = exc.output.strip()
+            time.sleep(sleep_seconds)
+    raise SystemExit(f"[bootstrap-error] Prowlarr did not become ready: {last_error}")
+
+def schema_for(schemas, implementation: str):
+    for item in schemas:
+        if item.get("implementation") == implementation:
+            return copy.deepcopy(item)
+    raise SystemExit(f"[bootstrap-error] Missing Prowlarr schema for {implementation}")
+
+def set_field(payload, field_name: str, value):
+    for field in payload.get("fields", []):
+        if field.get("name") == field_name:
+            field["value"] = value
+            return
+    raise SystemExit(f"[bootstrap-error] Missing field {field_name} in payload for {payload.get('implementation')}")
+
+def upsert_indexer_proxy(name: str, implementation: str, field_values: dict, api_key: str, schemas, existing_items):
+    existing = next(
+        (
+            item for item in existing_items
+            if item.get("implementation") == implementation or item.get("name") == name
+        ),
+        None,
+    )
+
+    payload = copy.deepcopy(existing) if existing else schema_for(schemas, implementation)
+    payload["name"] = name
+    payload["implementation"] = implementation
+    payload["implementationName"] = payload.get("implementationName", implementation)
+    payload.setdefault("tags", [])
+
+    for field_name, value in field_values.items():
+        set_field(payload, field_name, value)
+
+    if existing:
+        run_request("PUT", f"http://prowlarr:9696/prowlarr/api/v1/indexerproxy/{existing['id']}", api_key, payload)
+        print(f"[bootstrap] Updated Prowlarr indexer proxy: {name}")
+    else:
+        created = request_json("POST", "http://prowlarr:9696/prowlarr/api/v1/indexerproxy", api_key, payload)
+        existing_items.append(created)
+        print(f"[bootstrap] Created Prowlarr indexer proxy: {name}")
+
+def upsert_application(name: str, implementation: str, field_values: dict, api_key: str, schemas, existing_items):
+    existing = next(
+        (
+            item for item in existing_items
+            if item.get("implementation") == implementation or item.get("name") == name
+        ),
+        None,
+    )
+
+    payload = copy.deepcopy(existing) if existing else schema_for(schemas, implementation)
+    payload["name"] = name
+    payload["implementation"] = implementation
+    payload["implementationName"] = payload.get("implementationName", implementation)
+    payload["enable"] = True
+    payload["syncLevel"] = payload.get("syncLevel", "fullSync")
+    payload.setdefault("tags", [])
+
+    for field_name, value in field_values.items():
+        set_field(payload, field_name, value)
+
+    if existing:
+        run_request("PUT", f"http://prowlarr:9696/prowlarr/api/v1/applications/{existing['id']}", api_key, payload)
+        print(f"[bootstrap] Updated Prowlarr application: {name}")
+    else:
+        created = request_json("POST", "http://prowlarr:9696/prowlarr/api/v1/applications", api_key, payload)
+        existing_items.append(created)
+        print(f"[bootstrap] Created Prowlarr application: {name}")
+
+prowlarr_api_key = extract_xml_api_key(root_dir / "prowlarr" / "data" / "config.xml")
+sonarr_api_key = extract_xml_api_key(root_dir / "sonarr" / "data" / "config.xml")
+radarr_api_key = extract_xml_api_key(root_dir / "radarr" / "data" / "config.xml")
+
+indexer_proxy_schemas = wait_for_json("http://prowlarr:9696/prowlarr/api/v1/indexerproxy/schema", prowlarr_api_key)
+application_schemas = wait_for_json("http://prowlarr:9696/prowlarr/api/v1/applications/schema", prowlarr_api_key)
+indexer_proxies = wait_for_json("http://prowlarr:9696/prowlarr/api/v1/indexerproxy", prowlarr_api_key)
+applications = wait_for_json("http://prowlarr:9696/prowlarr/api/v1/applications", prowlarr_api_key)
+
+upsert_indexer_proxy(
+    name="FlareSolverr",
+    implementation="FlareSolverr",
+    field_values={
+        "host": "http://flaresolverr:8191/",
+        "requestTimeout": 60,
+    },
+    api_key=prowlarr_api_key,
+    schemas=indexer_proxy_schemas,
+    existing_items=indexer_proxies,
+)
+
+upsert_application(
+    name="Sonarr",
+    implementation="Sonarr",
+    field_values={
+        "prowlarrUrl": "http://prowlarr:9696/prowlarr",
+        "baseUrl": "http://sonarr:8989/sonarr",
+        "apiKey": sonarr_api_key,
+    },
+    api_key=prowlarr_api_key,
+    schemas=application_schemas,
+    existing_items=applications,
+)
+
+upsert_application(
+    name="Radarr",
+    implementation="Radarr",
+    field_values={
+        "prowlarrUrl": "http://prowlarr:9696/prowlarr",
+        "baseUrl": "http://radarr:7878/radarr",
+        "apiKey": radarr_api_key,
+    },
+    api_key=prowlarr_api_key,
+    schemas=application_schemas,
+    existing_items=applications,
+)
+PY
+}
+
 extract_xml_key() {
   local file="$1"
   python3 - "${file}" <<'PY'
@@ -356,6 +526,9 @@ main() {
 
   log "Configuring ARR forms auth"
   set_arr_forms_auth
+
+  log "Linking FlareSolverr, Sonarr, and Radarr in Prowlarr"
+  configure_prowlarr_integrations
 
   log "Syncing generated API keys back into .env"
   sync_api_keys
