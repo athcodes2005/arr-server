@@ -1,0 +1,52 @@
+- Media:
+    - qBittorrent:
+        icon: qbittorrent.png
+        href: /qbittorrent/
+        description: Torrent client
+        container: qbittorrent
+        widget:
+          type: qbittorrent
+          url: http://qbittorrent:8080
+          username: "{{HOMEPAGE_VAR_QBITTORRENT_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_QBITTORRENT_PASSWORD}}"
+    - Prowlarr:
+        icon: prowlarr.png
+        href: /prowlarr/
+        description: Indexer manager
+        container: prowlarr
+        widget:
+          type: prowlarr
+          url: http://prowlarr:9696
+          key: "{{HOMEPAGE_VAR_PROWLARR_API_KEY}}"
+    - Sonarr:
+        icon: sonarr.png
+        href: /sonarr/
+        description: TV manager
+        container: sonarr
+        widget:
+          type: sonarr
+          url: http://sonarr:8989
+          key: "{{HOMEPAGE_VAR_SONARR_API_KEY}}"
+    - Radarr:
+        icon: radarr.png
+        href: /radarr/
+        description: Movie manager
+        container: radarr
+        widget:
+          type: radarr
+          url: http://radarr:7878
+          key: "{{HOMEPAGE_VAR_RADARR_API_KEY}}"
+    - Bazarr:
+        icon: bazarr.png
+        href: /bazarr/
+        description: Subtitle manager
+        container: bazarr
+        widget:
+          type: bazarr
+          url: http://bazarr:6767/bazarr
+          key: "{{HOMEPAGE_VAR_BAZARR_API_KEY}}"
+    - FlareSolverr:
+        icon: flaresolverr.png
+        description: Cloudflare challenge solver
+        container: flaresolverr
+        ping: http://flaresolverr:8191/

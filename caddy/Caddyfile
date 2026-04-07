@@ -1,0 +1,48 @@
+{
+	email {$LETSENCRYPT_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	redir /qbittorrent /qbittorrent/ 308
+	handle_path /qbittorrent/* {
+		reverse_proxy qbittorrent:8080 {
+			header_up Host qbittorrent:8080
+			header_up Origin http://qbittorrent:8080
+			header_up Referer http://qbittorrent:8080
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	@prowlarr path /prowlarr /prowlarr/*
+	handle @prowlarr {
+		reverse_proxy prowlarr:9696
+	}
+
+	@sonarr path /sonarr /sonarr/*
+	handle @sonarr {
+		reverse_proxy sonarr:8989
+	}
+
+	@radarr path /radarr /radarr/*
+	handle @radarr {
+		reverse_proxy radarr:7878
+	}
+
+	@bazarr path /bazarr /bazarr/*
+	handle @bazarr {
+		reverse_proxy bazarr:6767
+	}
+
+	handle {
+		reverse_proxy homepage:3000
+	}
+}

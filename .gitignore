@@ -1,0 +1,35 @@
+.DS_Store
+.env
+
+# Local runtime state
+caddy/data/*
+!caddy/data/.gitkeep
+caddy/config/*
+!caddy/config/.gitkeep
+
+qbittorrent/config/*
+!qbittorrent/config/.gitkeep
+prowlarr/data/*
+!prowlarr/data/.gitkeep
+sonarr/data/*
+!sonarr/data/.gitkeep
+radarr/data/*
+!radarr/data/.gitkeep
+bazarr/data/*
+!bazarr/data/.gitkeep
+
+data/torrents/*
+!data/torrents/.gitkeep
+data/media/movies/*
+!data/media/movies/.gitkeep
+data/media/tv/*
+!data/media/tv/.gitkeep
+
+# Common app database and log artefacts
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.log

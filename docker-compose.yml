@@ -1,0 +1,144 @@
+name: arr-server
+
+x-common-env: &common-env
+  PUID: ${PUID}
+  PGID: ${PGID}
+  TZ: ${TZ}
+  UMASK: ${UMASK:-002}
+
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  caddy:
+    image: caddy:2.9-alpine
+    restart: unless-stopped
+    depends_on:
+      - homepage
+      - qbittorrent
+      - prowlarr
+      - sonarr
+      - radarr
+      - bazarr
+    environment:
+      DOMAIN: ${DOMAIN}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/data:/data
+      - ./caddy/config:/config
+    logging: *default-logging
+    networks:
+      - arr_net
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    restart: unless-stopped
+    depends_on:
+      - qbittorrent
+      - prowlarr
+      - sonarr
+      - radarr
+      - bazarr
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: ${DOMAIN}
+      HOMEPAGE_VAR_QBITTORRENT_USERNAME: ${QBITTORRENT_WEBUI_USERNAME}
+      HOMEPAGE_VAR_QBITTORRENT_PASSWORD: ${QBITTORRENT_WEBUI_PASSWORD}
+      HOMEPAGE_VAR_PROWLARR_API_KEY: ${PROWLARR_API_KEY}
+      HOMEPAGE_VAR_SONARR_API_KEY: ${SONARR_API_KEY}
+      HOMEPAGE_VAR_RADARR_API_KEY: ${RADARR_API_KEY}
+      HOMEPAGE_VAR_BAZARR_API_KEY: ${BAZARR_API_KEY}
+    volumes:
+      - ./homepage/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    logging: *default-logging
+    networks:
+      - arr_net
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      WEBUI_PORT: ${QBITTORRENT_WEBUI_PORT}
+      TORRENTING_PORT: ${QBITTORRENT_TORRENT_PORT}
+    ports:
+      - "${QBITTORRENT_TORRENT_PORT}:${QBITTORRENT_TORRENT_PORT}"
+      - "${QBITTORRENT_TORRENT_PORT}:${QBITTORRENT_TORRENT_PORT}/udp"
+    volumes:
+      - ./qbittorrent/config:/config
+      - ./data:/data
+    logging: *default-logging
+    networks:
+      - arr_net
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    volumes:
+      - ./prowlarr/data:/config
+    logging: *default-logging
+    networks:
+      - arr_net
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    volumes:
+      - ./sonarr/data:/config
+      - ./data:/data
+    logging: *default-logging
+    networks:
+      - arr_net
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    volumes:
+      - ./radarr/data:/config
+      - ./data:/data
+    logging: *default-logging
+    networks:
+      - arr_net
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    volumes:
+      - ./bazarr/data:/config
+      - ./data:/data
+    logging: *default-logging
+    networks:
+      - arr_net
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: info
+      TZ: ${TZ}
+    logging: *default-logging
+    networks:
+      - arr_net
+
+networks:
+  arr_net:
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: ${DOCKER_IPV4_SUBNET}
+        - subnet: ${DOCKER_IPV6_SUBNET}

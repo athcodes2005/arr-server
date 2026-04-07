@@ -1,0 +1,2 @@
+- arr-server:
+    socket: /var/run/docker.sock

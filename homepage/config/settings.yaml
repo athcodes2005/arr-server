@@ -1,0 +1,7 @@
+title: ARR Server
+description: Media automation dashboard
+headerStyle: clean
+layout:
+  Media:
+    style: row
+    columns: 4
