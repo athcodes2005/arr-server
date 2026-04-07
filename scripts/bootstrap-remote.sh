@@ -321,6 +321,11 @@ sync_api_keys() {
   set_env_value "RADARR_API_KEY" "${radarr_key}"
   set_env_value "BAZARR_API_KEY" "${bazarr_key}"
 
+  export PROWLARR_API_KEY="${prowlarr_key}"
+  export SONARR_API_KEY="${sonarr_key}"
+  export RADARR_API_KEY="${radarr_key}"
+  export BAZARR_API_KEY="${bazarr_key}"
+
   compose_cmd up -d --force-recreate homepage
 }
 
