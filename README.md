@@ -120,7 +120,8 @@ Edit `.env` and fill in:
 - `LETSENCRYPT_EMAIL`
 - `PI_SSH_HOST`
 - `PI_DEPLOY_PATH`
-- qBittorrent widget credentials
+- qBittorrent credentials
+- `ARR_AUTH_USERNAME` and `ARR_AUTH_PASSWORD` if you want Servarr auth to differ from qBittorrent
 - Homepage API keys after first boot
 
 Validate the compose file locally:
@@ -174,6 +175,16 @@ Set the public base URL in each app so path-based reverse proxying works:
 - Sonarr: `/sonarr`
 - Radarr: `/radarr`
 - Bazarr: `/bazarr`
+
+Prowlarr, Sonarr, and Radarr forms auth is also bootstrapped automatically from `.env` during deploy:
+
+- `ARR_AUTH_USERNAME`
+- `ARR_AUTH_PASSWORD`
+
+If those are left blank, the bootstrap falls back to:
+
+- `QBITTORRENT_WEBUI_USERNAME`
+- `QBITTORRENT_WEBUI_PASSWORD`
 
 Then update Homepage widget API keys in `.env`:
 

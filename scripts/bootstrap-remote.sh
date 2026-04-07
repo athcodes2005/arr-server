@@ -9,12 +9,16 @@ log() {
   printf '[bootstrap] %s\n' "$*"
 }
 
-compose_cmd() {
+docker_cmd() {
   if docker info >/dev/null 2>&1; then
-    docker compose --env-file "${ENV_FILE}" "$@"
+    docker "$@"
   else
-    sudo docker compose --env-file "${ENV_FILE}" "$@"
+    sudo docker "$@"
   fi
+}
+
+compose_cmd() {
+  docker_cmd compose --env-file "${ENV_FILE}" "$@"
 }
 
 wait_for_file() {
@@ -188,6 +192,92 @@ PY
   compose_cmd restart prowlarr sonarr radarr bazarr
 }
 
+set_arr_forms_auth() {
+  local arr_username arr_password compose_project network_name
+
+  arr_username="${ARR_AUTH_USERNAME:-${QBITTORRENT_WEBUI_USERNAME:-admin}}"
+  arr_password="${ARR_AUTH_PASSWORD:-${QBITTORRENT_WEBUI_PASSWORD:-}}"
+
+  if [ -z "${arr_password}" ]; then
+    log "Skipping ARR auth bootstrap because no password is configured"
+    return 0
+  fi
+
+  compose_project="${COMPOSE_PROJECT_NAME:-$(basename "${ROOT_DIR}")}"
+  network_name="${compose_project}_arr_net"
+
+  python3 - "${ROOT_DIR}" "${network_name}" "${arr_username}" "${arr_password}" <<'PY'
+from pathlib import Path
+import json
+import re
+import subprocess
+import sys
+import time
+
+root_dir = Path(sys.argv[1])
+network_name = sys.argv[2]
+arr_username = sys.argv[3]
+arr_password = sys.argv[4]
+
+docker_prefix = ["docker"]
+if subprocess.run(["docker", "info"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0:
+    docker_prefix = ["sudo", "docker"]
+
+def extract_xml_api_key(path: Path) -> str:
+    match = re.search(r"<ApiKey>([^<]+)</ApiKey>", path.read_text())
+    if not match:
+        raise SystemExit(f"[bootstrap-error] Missing ApiKey in {path}")
+    return match.group(1)
+
+targets = [
+    ("prowlarr", "http://prowlarr:9696/prowlarr/api/v1/config/host", extract_xml_api_key(root_dir / "prowlarr" / "data" / "config.xml")),
+    ("sonarr", "http://sonarr:8989/sonarr/api/v3/config/host", extract_xml_api_key(root_dir / "sonarr" / "data" / "config.xml")),
+    ("radarr", "http://radarr:7878/radarr/api/v3/config/host", extract_xml_api_key(root_dir / "radarr" / "data" / "config.xml")),
+]
+
+for service, url, api_key in targets:
+    get_cmd = docker_prefix + [
+        "run", "--rm", "--network", network_name,
+        "curlimages/curl:8.12.1",
+        "-fsS",
+        "-H", f"X-Api-Key: {api_key}",
+        url,
+    ]
+
+    current = None
+    last_error = None
+    for _ in range(30):
+        try:
+            current = json.loads(subprocess.check_output(get_cmd, text=True, stderr=subprocess.STDOUT))
+            break
+        except subprocess.CalledProcessError as exc:
+            last_error = exc.output.strip()
+            time.sleep(2)
+
+    if current is None:
+        raise SystemExit(f"[bootstrap-error] {service} did not become ready for auth bootstrap: {last_error}")
+
+    current["authenticationMethod"] = "forms"
+    current["authenticationRequired"] = "enabled"
+    current["username"] = arr_username
+    current["password"] = arr_password
+    current["passwordConfirmation"] = arr_password
+
+    put_cmd = docker_prefix + [
+        "run", "--rm", "--network", network_name,
+        "curlimages/curl:8.12.1",
+        "-fsS",
+        "-X", "PUT",
+        "-H", f"X-Api-Key: {api_key}",
+        "-H", "Content-Type: application/json",
+        "--data", json.dumps(current),
+        url,
+    ]
+    subprocess.check_call(put_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    print(f"[bootstrap] Enabled forms auth for {service}")
+PY
+}
+
 extract_xml_key() {
   local file="$1"
   python3 - "${file}" <<'PY'
@@ -258,6 +348,9 @@ main() {
 
   log "Applying path-base configuration"
   set_arr_base_urls
+
+  log "Configuring ARR forms auth"
+  set_arr_forms_auth
 
   log "Syncing generated API keys back into .env"
   sync_api_keys
