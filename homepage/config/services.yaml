@@ -3,7 +3,7 @@
         icon: qbittorrent.png
         href: /qbittorrent/
         description: Torrent client
-        container: qbittorrent
+        container: arr-server-qbittorrent-1
         widget:
           type: qbittorrent
           url: http://qbittorrent:8080
@@ -13,34 +13,34 @@
         icon: prowlarr.png
         href: /prowlarr/
         description: Indexer manager
-        container: prowlarr
+        container: arr-server-prowlarr-1
         widget:
           type: prowlarr
-          url: http://prowlarr:9696
+          url: http://prowlarr:9696/prowlarr
           key: "{{HOMEPAGE_VAR_PROWLARR_API_KEY}}"
     - Sonarr:
         icon: sonarr.png
         href: /sonarr/
         description: TV manager
-        container: sonarr
+        container: arr-server-sonarr-1
         widget:
           type: sonarr
-          url: http://sonarr:8989
+          url: http://sonarr:8989/sonarr
           key: "{{HOMEPAGE_VAR_SONARR_API_KEY}}"
     - Radarr:
         icon: radarr.png
         href: /radarr/
         description: Movie manager
-        container: radarr
+        container: arr-server-radarr-1
         widget:
           type: radarr
-          url: http://radarr:7878
+          url: http://radarr:7878/radarr
           key: "{{HOMEPAGE_VAR_RADARR_API_KEY}}"
     - Bazarr:
         icon: bazarr.png
         href: /bazarr/
         description: Subtitle manager
-        container: bazarr
+        container: arr-server-bazarr-1
         widget:
           type: bazarr
           url: http://bazarr:6767/bazarr
@@ -48,5 +48,5 @@
     - FlareSolverr:
         icon: flaresolverr.png
         description: Cloudflare challenge solver
-        container: flaresolverr
+        container: arr-server-flaresolverr-1
         ping: http://flaresolverr:8191/
