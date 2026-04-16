@@ -37,7 +37,11 @@ sync_repo() {
   ssh -6 "${PI_SSH_HOST}" "mkdir -p '${PI_DEPLOY_PATH}'"
 
   log "Syncing repository to ${PI_SSH_HOST}:${PI_DEPLOY_PATH}"
-  rsync -az --human-readable \
+  # --inplace preserves the inode of files that are already bind-mounted into
+  # running containers (e.g. caddy/Caddyfile, webdav/config.yml). Without it
+  # rsync replaces the file via rename-over, breaking the bind mount until
+  # the container is recreated.
+  rsync -az --human-readable --inplace \
     --exclude '.git/' \
     --exclude '.DS_Store' \
     -e "ssh -6" \

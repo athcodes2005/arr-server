@@ -592,6 +592,17 @@ main() {
   log "Installing DuckDNS auto-updater"
   install_duckdns_updater
 
+  # rsync --inplace (see deploy.sh) keeps the Caddyfile inode stable so the
+  # container's bind mount stays live across deploys, but Caddy still needs
+  # to be told to re-read the file. Ignore the reload error if caddy happens
+  # to be absent or restarting — the config is validated by the image at
+  # next container start regardless.
+  log "Reloading Caddy configuration"
+  if docker_cmd ps --format '{{.Names}}' | grep -qx 'arr-server-caddy-1'; then
+    docker_cmd exec arr-server-caddy-1 caddy reload --config /etc/caddy/Caddyfile 2>/dev/null \
+      || log "Caddy reload skipped (container not ready)"
+  fi
+
   log "Bootstrap complete"
 }
 
