@@ -12,6 +12,7 @@ The stack currently includes:
 - Radarr
 - Bazarr
 - Byparr (FlareSolverr-compatible indexer proxy, lighter on RAM)
+- WebDAV (read-only share of the media library for Finder / VLC / Kodi)
 
 Public entrypoint:
 
@@ -25,6 +26,7 @@ The app routes are path-based because DuckDNS gives you a single hostname:
 - `https://yourhost.duckdns.org/sonarr/`
 - `https://yourhost.duckdns.org/radarr/`
 - `https://yourhost.duckdns.org/bazarr/`
+- `https://yourhost.duckdns.org/webdav/`
 
 ## Directory layout
 
@@ -60,8 +62,10 @@ arr-server/
 │   └── config/
 ├── radarr/
 │   └── data/
-└── sonarr/
-    └── data/
+├── sonarr/
+│   └── data/
+└── webdav/
+    └── config.yml
 ```
 
 ## Architecture
@@ -123,6 +127,7 @@ Edit `.env` and fill in:
 - `DUCKDNS_TOKEN` (from https://www.duckdns.org after signing in)
 - qBittorrent credentials
 - `ARR_AUTH_USERNAME` and `ARR_AUTH_PASSWORD` if you want Servarr auth to differ from qBittorrent
+- `WEBDAV_USERNAME` and `WEBDAV_PASSWORD` for the read-only media share
 - Homepage API keys after first boot
 
 Validate the compose file locally:
@@ -255,6 +260,57 @@ ssh -6 youruser@yourhost.duckdns.org "journalctl -t duckdns -n 20 --no-pager"
 
 If `DUCKDNS_TOKEN` is left blank the updater is skipped and any previously
 installed cron entry is removed.
+
+## WebDAV media share
+
+The stack exposes `./data/media` (movies + tv) read-only over WebDAV at:
+
+- `https://yourhost.duckdns.org/webdav/`
+
+The server is `hacdias/webdav` (Go, tiny RAM footprint) behind Caddy. Auth is
+basic auth, credentials come from `.env`:
+
+- `WEBDAV_USERNAME`
+- `WEBDAV_PASSWORD`
+
+Permissions are fixed at `R` (read-only) in `webdav/config.yml` and the bind
+mount in `docker-compose.yml` is also mounted `:ro`, so clients cannot modify
+the arr-managed library even if the config is edited.
+
+### Connecting clients
+
+**macOS Finder**
+
+- `Cmd + K` → `Server Address: https://yourhost.duckdns.org/webdav/`
+- Connect As: Registered User → enter `WEBDAV_USERNAME` / `WEBDAV_PASSWORD`
+- The share mounts under `/Volumes/webdav`.
+
+**VLC**
+
+- Open Network → `https://yourhost.duckdns.org/webdav/` → enter credentials
+
+**Kodi**
+
+- Add Video Source → Browse → Add network location → `WebDAV server (HTTPS)`
+- Server name: `yourhost.duckdns.org`, Remote path: `webdav`, username +
+  password from `.env`
+
+**Command line (testing)**
+
+```bash
+curl -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" https://yourhost.duckdns.org/webdav/
+```
+
+A listing of `movies/` and `tv/` should come back.
+
+### Changing permissions
+
+If you later want a writable share (e.g. to upload files from another
+machine), edit `webdav/config.yml` and change `permissions: R` to `CRUD`,
+then drop the `:ro` flag on the `./data/media:/media` mount in
+`docker-compose.yml`. Redeploy with `./deploy.sh`. Be aware that clients
+writing into this tree may confuse Sonarr/Radarr if names collide with
+managed files.
 
 ## Useful commands
 

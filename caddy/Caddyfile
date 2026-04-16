@@ -42,6 +42,15 @@
 		reverse_proxy bazarr:6767
 	}
 
+	# WebDAV share of the media library. The server itself is configured with
+	# prefix: /webdav, so we forward the path intact (no handle_path strip).
+	# reverse_proxy already relays WebDAV methods (PROPFIND/MKCOL/COPY/MOVE/
+	# LOCK/UNLOCK) and the Destination header unchanged.
+	@webdav path /webdav /webdav/*
+	handle @webdav {
+		reverse_proxy webdav:6065
+	}
+
 	handle {
 		reverse_proxy homepage:3000
 	}

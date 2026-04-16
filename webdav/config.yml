@@ -1,0 +1,30 @@
+# hacdias/webdav configuration. See https://github.com/hacdias/webdav
+#
+# The server shares the downloaded media library read-only. Access is proxied
+# by Caddy under https://${DOMAIN}/webdav/ with basic auth handled by this
+# server (not Caddy). Credentials are pulled from the container's environment,
+# which docker-compose injects from .env on the Pi.
+
+address: 0.0.0.0
+port: 6065
+
+# Caddy reverse-proxies /webdav/* to this service and preserves the prefix,
+# so the server must know it is mounted at /webdav and must trust
+# X-Forwarded-* headers from the proxy.
+prefix: /webdav
+behindProxy: true
+
+# Read-only share of the media library. The bind mount in docker-compose.yml
+# already maps ./data/media -> /media as read-only, so even if permissions
+# were widened here clients still could not write.
+directory: /media
+permissions: R
+
+# Directory listings are handy for Finder / browser clients.
+directory_listing: true
+
+# Credentials are interpolated from the container's environment at start.
+# Docker Compose passes WEBDAV_USERNAME and WEBDAV_PASSWORD from .env.
+users:
+  - username: "{env}WEBDAV_USERNAME"
+    password: "{env}WEBDAV_PASSWORD"

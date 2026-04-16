@@ -23,6 +23,7 @@ services:
       - sonarr
       - radarr
       - bazarr
+      - webdav
     environment:
       DOMAIN: ${DOMAIN}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
@@ -133,6 +134,24 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TZ}
+    logging: *default-logging
+    networks:
+      - arr_net
+
+  webdav:
+    # Lightweight Go-native WebDAV server (hacdias/webdav). Exposes the
+    # downloaded media library read-only so other devices on the network can
+    # browse / stream it via Finder, VLC, Kodi, etc.
+    image: ghcr.io/hacdias/webdav:latest
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      WEBDAV_USERNAME: ${WEBDAV_USERNAME}
+      WEBDAV_PASSWORD: ${WEBDAV_PASSWORD}
+    command: ["-c", "/config.yml"]
+    volumes:
+      - ./webdav/config.yml:/config.yml:ro
+      - ./data/media:/media:ro
     logging: *default-logging
     networks:
       - arr_net

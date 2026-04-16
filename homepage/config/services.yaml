@@ -50,3 +50,9 @@
         description: Indexer proxy (FlareSolverr-compatible)
         container: arr-server-byparr-1
         ping: http://byparr:8191/
+    - WebDAV:
+        icon: mdi-folder-network-outline
+        href: /webdav/
+        description: Media library share (read-only)
+        container: arr-server-webdav-1
+        ping: http://webdav:6065/webdav/
