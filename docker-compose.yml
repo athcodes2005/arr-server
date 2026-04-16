@@ -125,11 +125,13 @@ services:
     networks:
       - arr_net
 
-  flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr:latest
+  byparr:
+    # FlareSolverr API-compatible, significantly lighter on RAM (important on
+    # Raspberry Pi). Prowlarr still uses the "FlareSolverr" indexer proxy type
+    # pointed at this container; the bootstrap script wires it up.
+    image: ghcr.io/thephaseless/byparr:latest
     restart: unless-stopped
     environment:
-      LOG_LEVEL: info
       TZ: ${TZ}
     logging: *default-logging
     networks:

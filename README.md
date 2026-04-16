@@ -11,7 +11,7 @@ The stack currently includes:
 - Sonarr
 - Radarr
 - Bazarr
-- FlareSolverr
+- Byparr (FlareSolverr-compatible indexer proxy, lighter on RAM)
 
 Public entrypoint:
 
@@ -41,7 +41,6 @@ arr-server/
 │   ├── Caddyfile
 │   ├── config/
 │   └── data/
-├── flaresolverr/
 ├── homepage/
 │   └── config/
 │       ├── bookmarks.yaml
@@ -203,11 +202,26 @@ Deploy again with:
 
 ### Prowlarr integration
 
-Inside Prowlarr:
+The bootstrap script wires these up automatically on every deploy:
 
-- add FlareSolverr with URL `http://flaresolverr:8191`
-- add Sonarr with URL `http://sonarr:8989`
-- add Radarr with URL `http://radarr:7878`
+- Byparr indexer proxy pointed at `http://byparr:8191/` (tagged `proxy`)
+- Sonarr application at `http://sonarr:8989/sonarr`
+- Radarr application at `http://radarr:7878/radarr`
+
+### Routing indexers through Byparr
+
+Some indexers fail direct HTTP requests from Prowlarr — either because they
+are IPv6-only (which exposes a .NET HttpClient quirk on Alpine), or because
+they sit behind Cloudflare. For those, add the `proxy` tag when configuring
+the indexer in Prowlarr:
+
+1. Prowlarr → Indexers → Add Indexer → pick the indexer
+2. In the **Tags** field, select `proxy`
+3. Save
+
+Prowlarr will then route that indexer's traffic through Byparr. The `proxy`
+tag is created automatically during deploy and attached to the Byparr
+indexer proxy, so you only need to tag the indexer itself.
 
 ### Sonarr / Radarr media management
 

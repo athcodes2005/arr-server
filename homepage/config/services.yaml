@@ -45,8 +45,8 @@
           type: bazarr
           url: http://bazarr:6767/bazarr
           key: "{{HOMEPAGE_VAR_BAZARR_API_KEY}}"
-    - FlareSolverr:
-        icon: flaresolverr.png
-        description: Cloudflare challenge solver
-        container: arr-server-flaresolverr-1
-        ping: http://flaresolverr:8191/
+    - Byparr:
+        icon: mdi-shield-outline
+        description: Indexer proxy (FlareSolverr-compatible)
+        container: arr-server-byparr-1
+        ping: http://byparr:8191/

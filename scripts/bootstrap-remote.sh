@@ -345,7 +345,21 @@ def set_field(payload, field_name: str, value):
             return
     raise SystemExit(f"[bootstrap-error] Missing field {field_name} in payload for {payload.get('implementation')}")
 
-def upsert_indexer_proxy(name: str, implementation: str, field_values: dict, api_key: str, schemas, existing_items):
+def ensure_tag(label: str, api_key: str) -> int:
+    """Return the Prowlarr tag id for label, creating it if missing."""
+    tags = request_json("GET", "http://prowlarr:9696/prowlarr/api/v1/tag", api_key)
+    for tag in tags:
+        if tag.get("label") == label:
+            return tag["id"]
+    created = request_json(
+        "POST",
+        "http://prowlarr:9696/prowlarr/api/v1/tag",
+        api_key,
+        {"label": label},
+    )
+    return created["id"]
+
+def upsert_indexer_proxy(name: str, implementation: str, field_values: dict, api_key: str, schemas, existing_items, tag_ids=None):
     existing = next(
         (
             item for item in existing_items
@@ -358,7 +372,7 @@ def upsert_indexer_proxy(name: str, implementation: str, field_values: dict, api
     payload["name"] = name
     payload["implementation"] = implementation
     payload["implementationName"] = payload.get("implementationName", implementation)
-    payload.setdefault("tags", [])
+    payload["tags"] = list(tag_ids or [])
 
     for field_name, value in field_values.items():
         set_field(payload, field_name, value)
@@ -408,16 +422,19 @@ application_schemas = wait_for_json("http://prowlarr:9696/prowlarr/api/v1/applic
 indexer_proxies = wait_for_json("http://prowlarr:9696/prowlarr/api/v1/indexerproxy", prowlarr_api_key)
 applications = wait_for_json("http://prowlarr:9696/prowlarr/api/v1/applications", prowlarr_api_key)
 
+proxy_tag_id = ensure_tag("proxy", prowlarr_api_key)
+
 upsert_indexer_proxy(
-    name="FlareSolverr",
+    name="Byparr",
     implementation="FlareSolverr",
     field_values={
-        "host": "http://flaresolverr:8191/",
+        "host": "http://byparr:8191/",
         "requestTimeout": 60,
     },
     api_key=prowlarr_api_key,
     schemas=indexer_proxy_schemas,
     existing_items=indexer_proxies,
+    tag_ids=[proxy_tag_id],
 )
 
 upsert_application(
@@ -566,7 +583,7 @@ main() {
   log "Configuring ARR forms auth"
   set_arr_forms_auth
 
-  log "Linking FlareSolverr, Sonarr, and Radarr in Prowlarr"
+  log "Linking Byparr, Sonarr, and Radarr in Prowlarr"
   configure_prowlarr_integrations
 
   log "Syncing generated API keys back into .env"
