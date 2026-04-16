@@ -478,6 +478,45 @@ print(match.group(1).strip())
 PY
 }
 
+install_duckdns_updater() {
+  local updater marker entry current
+
+  updater="${ROOT_DIR}/scripts/duckdns-update.sh"
+  if [ ! -x "${updater}" ]; then
+    chmod +x "${updater}"
+  fi
+
+  if [ -z "${DUCKDNS_TOKEN:-}" ]; then
+    log "Skipping DuckDNS updater install (DUCKDNS_TOKEN not set)"
+    # Still remove any stale cron entry from a prior install.
+    current="$(crontab -l 2>/dev/null || true)"
+    if printf '%s\n' "${current}" | grep -qF '# arr-server-duckdns'; then
+      printf '%s\n' "${current}" | grep -vF '# arr-server-duckdns' | crontab -
+      log "Removed stale DuckDNS cron entry"
+    fi
+    return 0
+  fi
+
+  # Run once immediately so the AAAA record is refreshed on every deploy.
+  if "${updater}"; then
+    log "Pushed current IPv6 to DuckDNS"
+  else
+    log "Initial DuckDNS update failed (cron will retry)"
+  fi
+
+  marker="# arr-server-duckdns"
+  entry="*/5 * * * * ${updater} 2>&1 | logger -t duckdns ${marker}"
+
+  current="$(crontab -l 2>/dev/null || true)"
+  if printf '%s\n' "${current}" | grep -qF "${entry}"; then
+    log "DuckDNS cron entry already present"
+    return 0
+  fi
+
+  { printf '%s\n' "${current}" | grep -vF "${marker}"; printf '%s\n' "${entry}"; } | crontab -
+  log "Installed DuckDNS updater cron (every 5 min, logs via journald tag=duckdns)"
+}
+
 sync_api_keys() {
   local prowlarr_key sonarr_key radarr_key bazarr_key
 
@@ -532,6 +571,9 @@ main() {
 
   log "Syncing generated API keys back into .env"
   sync_api_keys
+
+  log "Installing DuckDNS auto-updater"
+  install_duckdns_updater
 
   log "Bootstrap complete"
 }

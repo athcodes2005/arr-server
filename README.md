@@ -102,7 +102,8 @@ Your router also needs:
 
 - IPv6 enabled end-to-end
 - inbound TCP `80` and `443` allowed to the Pi for Let's Encrypt HTTP-01
-- DuckDNS publishing the Pi's public `AAAA` record
+- DuckDNS publishing the Pi's public `AAAA` record (the stack keeps this
+  fresh automatically; see "DuckDNS auto-updater" below)
 
 ## First-time setup on your Mac
 
@@ -120,6 +121,7 @@ Edit `.env` and fill in:
 - `LETSENCRYPT_EMAIL`
 - `PI_SSH_HOST`
 - `PI_DEPLOY_PATH`
+- `DUCKDNS_TOKEN` (from https://www.duckdns.org after signing in)
 - qBittorrent credentials
 - `ARR_AUTH_USERNAME` and `ARR_AUTH_PASSWORD` if you want Servarr auth to differ from qBittorrent
 - Homepage API keys after first boot
@@ -216,6 +218,29 @@ Use shared paths so imports and hardlinks work correctly:
 - qBittorrent downloads: `/data/torrents`
 
 All four app containers mount the same `./data` directory as `/data`, which keeps paths consistent.
+
+## DuckDNS auto-updater
+
+ISPs rotate the IPv6 prefix on residential lines every so often. When that
+happens the Pi gets a new public IPv6 and the DuckDNS `AAAA` record goes
+stale, breaking SSH and HTTPS from the outside.
+
+`scripts/duckdns-update.sh` pushes the Pi's current global IPv6 to DuckDNS.
+`scripts/bootstrap-remote.sh` installs it as a cron job during every deploy:
+
+- runs every 5 minutes
+- reads `DOMAIN` and `DUCKDNS_TOKEN` from `.env`
+- picks the first non-ULA global IPv6 on `eth0` (override with `DUCKDNS_IFACE`)
+- logs to journald with tag `duckdns`
+
+Tail updater logs on the Pi:
+
+```bash
+ssh -6 youruser@yourhost.duckdns.org "journalctl -t duckdns -n 20 --no-pager"
+```
+
+If `DUCKDNS_TOKEN` is left blank the updater is skipped and any previously
+installed cron entry is removed.
 
 ## Useful commands
 
