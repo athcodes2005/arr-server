@@ -575,7 +575,7 @@ main() {
     "${ROOT_DIR}/data/media/tv"
 
   log "Starting containers"
-  compose_cmd up -d
+  compose_cmd up -d --remove-orphans
 
   log "Applying path-base configuration"
   set_arr_base_urls
