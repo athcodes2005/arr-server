@@ -268,14 +268,26 @@ The stack exposes `./data/media` (movies + tv) read-only over WebDAV at:
 - `https://yourhost.duckdns.org/webdav/`
 
 The server is `hacdias/webdav` (Go, tiny RAM footprint) behind Caddy. Auth is
-basic auth, credentials come from `.env`:
+basic auth; credentials come from `.env`:
 
 - `WEBDAV_USERNAME`
 - `WEBDAV_PASSWORD`
 
+If those are left blank, bootstrap falls back to `QBITTORRENT_WEBUI_USERNAME`
+/ `QBITTORRENT_WEBUI_PASSWORD` — the same "admin / master password" you use
+for the rest of the stack (matching the `ARR_AUTH_*` fallback pattern).
+
 Permissions are fixed at `R` (read-only) in `webdav/config.yml` and the bind
 mount in `docker-compose.yml` is also mounted `:ro`, so clients cannot modify
 the arr-managed library even if the config is edited.
+
+### Why does `/webdav/` look like raw XML in a browser?
+
+That is WebDAV working correctly, not an error. WebDAV is a protocol for
+file-manager clients (Finder, Kodi, VLC, Cyberduck), not web browsers. When a
+browser does a plain `GET` on a collection URL, the server responds with the
+protocol-native multistatus XML listing. Browsers have no idea how to render
+it, so they dump the tree verbatim. Open it in a real WebDAV client instead.
 
 ### Connecting clients
 

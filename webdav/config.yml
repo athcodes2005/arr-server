@@ -20,11 +20,16 @@ behindProxy: true
 directory: /media
 permissions: R
 
-# Directory listings are handy for Finder / browser clients.
-directory_listing: true
+# Note on browsers: WebDAV is a protocol for file-manager clients (Finder,
+# Kodi, VLC, Cyberduck). A plain browser GET on /webdav/ returns the
+# protocol-native XML PROPFIND-style listing — that is correct and working
+# behaviour, not an error. hacdias/webdav does not ship an HTML renderer.
+# To browse in Finder use Cmd+K and connect to https://${DOMAIN}/webdav/.
 
 # Credentials are interpolated from the container's environment at start.
-# Docker Compose passes WEBDAV_USERNAME and WEBDAV_PASSWORD from .env.
+# Docker Compose passes WEBDAV_USERNAME and WEBDAV_PASSWORD from .env,
+# which bootstrap-remote.sh backs onto the qBittorrent web-UI credentials
+# if WEBDAV_* are left blank.
 users:
   - username: "{env}WEBDAV_USERNAME"
     password: "{env}WEBDAV_PASSWORD"

@@ -574,6 +574,14 @@ main() {
     "${ROOT_DIR}/data/media/movies" \
     "${ROOT_DIR}/data/media/tv"
 
+  # Match the ARR pattern: if WEBDAV_* are blank in .env, fall back to the
+  # qBittorrent web-UI credentials so the user only has to manage one
+  # "admin / master password" for the whole stack. Export so docker compose
+  # picks them up for the webdav container's environment.
+  WEBDAV_USERNAME="${WEBDAV_USERNAME:-${QBITTORRENT_WEBUI_USERNAME:-admin}}"
+  WEBDAV_PASSWORD="${WEBDAV_PASSWORD:-${QBITTORRENT_WEBUI_PASSWORD:-}}"
+  export WEBDAV_USERNAME WEBDAV_PASSWORD
+
   log "Starting containers"
   compose_cmd up -d --remove-orphans
 
