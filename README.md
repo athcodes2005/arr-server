@@ -324,6 +324,38 @@ then drop the `:ro` flag on the `./data/media:/media` mount in
 writing into this tree may confuse Sonarr/Radarr if names collide with
 managed files.
 
+## Security hardening (manual steps on the Pi)
+
+The following items cannot be fixed via this repo's deploy scripts — they
+require direct SSH access to the Pi with root privileges.
+
+### SSH hardening (MEDIUM severity)
+
+Port 22 is publicly reachable from the internet.  Disable password
+authentication so only SSH keys work:
+
+```bash
+# On the Pi:
+sudo grep -E '^(PasswordAuthentication|ChallengeResponseAuthentication|PubkeyAuthentication)' /etc/ssh/sshd_config
+# Make sure these are set:
+sudo sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+sudo sed -i 's/^#*ChallengeResponseAuthentication.*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+sudo systemctl reload ssh
+```
+
+Verify your key-based login still works in a second terminal before closing
+the current session.  Once confirmed, consider restricting SSH to known source
+IPv6 prefixes with `ufw` or `ip6tables` if your home IPv6 prefix is stable.
+
+### Homepage service-list API (MEDIUM severity)
+
+`GET /api/services` is publicly accessible without authentication and returns
+the full internal service topology (all Docker container names, descriptions,
+and paths).  gethomepage does not offer request-level auth for its API
+endpoints; the only mitigation is to put the homepage itself behind auth.
+For now this is accepted risk — the information is architectural, not
+credential-bearing.
+
 ## Useful commands
 
 Deploy:

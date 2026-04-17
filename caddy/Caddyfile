@@ -2,13 +2,36 @@
 	email {$LETSENCRYPT_EMAIL}
 }
 
+# Explicit HTTP catch-all that redirects to the CANONICAL HTTPS domain.
+# This prevents host-header injection: Caddy's default auto-HTTPS redirect
+# reflects the request Host header into the Location URL, letting an attacker
+# craft a redirect to an arbitrary domain. Hardcoding {$DOMAIN} here fixes it.
+http:// {
+	redir https://{$DOMAIN}{uri} 308
+}
+
 {$DOMAIN} {
 	encode zstd gzip
 
 	header {
+		# HSTS: tell browsers to always use HTTPS for this domain (1 year).
+		# preload allows submission to the browser preload lists.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "SAMEORIGIN"
 		Referrer-Policy "strict-origin-when-cross-origin"
+
+		# Prevent clickjacking and restrict access to sensitive browser APIs.
+		Cross-Origin-Opener-Policy "same-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+
+		# Strip backend fingerprinting headers added by upstream apps.
+		# Upstream "Server: Kestrel" (.NET), "Server: waitress" (Python),
+		# and Next.js's "X-Powered-By" are removed; Caddy's own "Server: Caddy"
+		# is also suppressed so scanners cannot fingerprint the stack.
+		-Server
+		-X-Powered-By
 	}
 
 	redir /qbittorrent /qbittorrent/ 308
@@ -39,7 +62,18 @@
 
 	@bazarr path /bazarr /bazarr/*
 	handle @bazarr {
-		reverse_proxy bazarr:6767
+		reverse_proxy bazarr:6767 {
+			# Bazarr emits Access-Control-Allow-Origin: * (and reflects arbitrary
+			# Origin values) regardless of its internal cors: enabled: false setting.
+			# Strip all CORS response headers here — the service is only ever
+			# accessed same-origin through Caddy and needs no CORS at all.
+			header_down -Access-Control-Allow-Origin
+			header_down -Access-Control-Allow-Methods
+			header_down -Access-Control-Allow-Headers
+			header_down -Access-Control-Allow-Credentials
+			header_down -Access-Control-Expose-Headers
+			header_down -Access-Control-Max-Age
+		}
 	}
 
 	# WebDAV share of the media library. The server itself is configured with
