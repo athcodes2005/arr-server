@@ -39,10 +39,13 @@ fi
 
 IFACE="${DUCKDNS_IFACE:-eth0}"
 
-# Pick the first global-scope IPv6 that is not a ULA (fc00::/7).
-# The Pi's Docker daemon adds a ULA prefix for internal networking which
-# we must skip. Only the ISP-assigned GUA is routable.
+# Pick the first global-scope, non-deprecated, non-ULA (fc00::/7) IPv6.
+# When the ISP rotates the prefix the old GUA lingers on the interface marked
+# "deprecated" until its valid lifetime expires.  Without the grep -v filter
+# head -n1 picks the stale deprecated address so DuckDNS never learns the new
+# prefix, causing an outage until the old address finally disappears.
 IPV6="$(ip -6 -o addr show dev "${IFACE}" scope global 2>/dev/null \
+  | grep -v deprecated \
   | awk '{print $4}' \
   | cut -d/ -f1 \
   | grep -vE '^(fc|fd)' \
