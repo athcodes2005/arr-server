@@ -329,23 +329,16 @@ managed files.
 The following items cannot be fixed via this repo's deploy scripts — they
 require direct SSH access to the Pi with root privileges.
 
-### SSH hardening (MEDIUM severity)
+### SSH password authentication (MEDIUM — accepted risk)
 
-Port 22 is publicly reachable from the internet.  Disable password
-authentication so only SSH keys work:
+Port 22 is publicly reachable from the internet. Password authentication is
+intentionally kept enabled as a backup login method. UFW already limits the
+attack surface to only the ports the stack needs (22, 80, 443, the torrent
+port). Brute-force risk is mitigated by using a strong, unique password.
 
-```bash
-# On the Pi:
-sudo grep -E '^(PasswordAuthentication|ChallengeResponseAuthentication|PubkeyAuthentication)' /etc/ssh/sshd_config
-# Make sure these are set:
-sudo sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-sudo sed -i 's/^#*ChallengeResponseAuthentication.*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
-sudo systemctl reload ssh
-```
-
-Verify your key-based login still works in a second terminal before closing
-the current session.  Once confirmed, consider restricting SSH to known source
-IPv6 prefixes with `ufw` or `ip6tables` if your home IPv6 prefix is stable.
+If you ever want to tighten this further, you can restrict SSH to known source
+IPv6 prefixes with `ufw` (e.g. `ufw allow from 2001:db8::/32 to any port 22`)
+once your home IPv6 prefix is stable — but this is not required.
 
 ### Docker socket on Homepage container (MEDIUM — accepted trade-off)
 
