@@ -132,6 +132,11 @@ services:
     # pointed at this container; the bootstrap script wires it up.
     image: ghcr.io/thephaseless/byparr:latest
     restart: unless-stopped
+    # Byparr drives a headless Chromium via Playwright. Each solved request
+    # spawns short-lived Chromium sub-processes; without a proper PID 1 init
+    # they linger as <defunct> zombies and slowly exhaust the Pi's PID table.
+    # init: true inserts Docker's tini shim as PID 1, which reaps them cleanly.
+    init: true
     environment:
       TZ: ${TZ}
     logging: *default-logging

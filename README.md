@@ -347,7 +347,19 @@ Verify your key-based login still works in a second terminal before closing
 the current session.  Once confirmed, consider restricting SSH to known source
 IPv6 prefixes with `ufw` or `ip6tables` if your home IPv6 prefix is stable.
 
-### Homepage service-list API (MEDIUM severity)
+### Docker socket on Homepage container (MEDIUM — accepted trade-off)
+
+`docker-compose.yml` mounts `/var/run/docker.sock:ro` into the Homepage
+container so it can display live container status widgets.  The `:ro` flag
+prevents the container from starting/stopping services, but a compromised
+Homepage instance could still read other containers' environment variables
+(which may contain API keys and passwords) via the Docker API.
+
+If the Dashboard container widgets are not needed, remove the volume mount
+from the `homepage:` service in `docker-compose.yml` to eliminate this surface
+entirely.
+
+### Homepage service-list API (MEDIUM — accepted risk)
 
 `GET /api/services` is publicly accessible without authentication and returns
 the full internal service topology (all Docker container names, descriptions,
