@@ -11,7 +11,13 @@ http:// {
 }
 
 {$DOMAIN} {
-	encode zstd gzip
+	# Compress text-based responses (HTML, JSON, XML, subtitles).
+	# Explicitly exclude /webdav/* — video files are already compressed codecs
+	# (H.264/H.265) and the encode middleware buffers an initial chunk on every
+	# response to decide whether compression applies, which causes seek stalls
+	# when a video player issues Range requests against large files.
+	@compressible not path /webdav /webdav/*
+	encode @compressible zstd gzip
 
 	header {
 		# HSTS: tell browsers to always use HTTPS for this domain (1 year).
