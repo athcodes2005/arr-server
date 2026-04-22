@@ -14,4 +14,11 @@ hidden:
   - ".gitkeep"
 auth:
   - "admin:change-me@/"
+# Force Basic auth only. dufs defaults to offering Digest auth first; Digest
+# requires a challenge-response round-trip (401 → compute → retry) on every
+# new connection. Infuse's FFmpeg streaming layer re-opens the connection for
+# each Range request and times out waiting for the nonce handshake, producing
+# "Failed to open input stream in demuxing stream". Basic auth sends credentials
+# immediately on the first request — safe here because Caddy enforces HTTPS.
+auth-only-basic: true
 log-format: '$remote_addr $remote_user "$request" $status $http_user_agent'

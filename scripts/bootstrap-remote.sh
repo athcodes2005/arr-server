@@ -152,6 +152,11 @@ hidden:
   - ".gitkeep"
 auth:
   - {json.dumps(auth_rule)}
+# Basic-only auth: dufs defaults to Digest-first, but Infuse (and other
+# media players using FFmpeg) re-open the HTTP connection per Range request
+# and time out on the Digest nonce round-trip. Basic auth sends credentials
+# immediately; safe because Caddy enforces HTTPS end-to-end.
+auth-only-basic: true
 log-format: {json.dumps('$remote_addr $remote_user "$request" $status $http_user_agent')}
 """
 
