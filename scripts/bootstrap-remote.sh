@@ -616,7 +616,13 @@ main() {
   log "Computing WebDAV password hash for Caddy basic_auth"
   WEBDAV_PASSWORD_HASH="$(compute_webdav_password_hash)"
   export WEBDAV_PASSWORD_HASH
-  set_env_value "WEBDAV_PASSWORD_HASH" "${WEBDAV_PASSWORD_HASH}"
+  # Bcrypt hashes contain bare $ signs (e.g. $2a$14$...). Docker Compose
+  # performs variable interpolation on .env values that are passed through to
+  # the Compose file, so $QIh... after the cost factor gets treated as an
+  # undefined variable reference and is silently dropped. Single-quoting the
+  # value in .env tells Docker Compose's env parser to treat the content as a
+  # literal string (same behaviour as single quotes in POSIX shell).
+  set_env_value "WEBDAV_PASSWORD_HASH" "'${WEBDAV_PASSWORD_HASH}'"
 
   log "Starting containers"
   compose_cmd up -d --remove-orphans
