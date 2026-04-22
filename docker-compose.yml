@@ -27,6 +27,8 @@ services:
     environment:
       DOMAIN: ${DOMAIN}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+      WEBDAV_USERNAME: ${WEBDAV_USERNAME}
+      WEBDAV_PASSWORD_HASH: ${WEBDAV_PASSWORD_HASH}
     ports:
       - "80:80"
       - "443:443"
