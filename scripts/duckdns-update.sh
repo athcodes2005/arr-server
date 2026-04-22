@@ -19,10 +19,18 @@ if [ ! -f "${ENV_FILE}" ]; then
   exit 1
 fi
 
-# shellcheck disable=SC1090
-set -a
-. "${ENV_FILE}"
-set +a
+# Extract only the variables this script needs via grep rather than sourcing
+# the entire .env file. Sourcing with `set -a; . .env; set +a` is unsafe when
+# .env contains values with bare $ signs — e.g. WEBDAV_PASSWORD_HASH contains
+# a bcrypt hash starting with $2a$ which bash interprets as positional params,
+# causing `set -euo pipefail` to abort on the unbound variable error.
+_env_get() {
+  grep -m1 "^${1}=" "${ENV_FILE}" | cut -d= -f2-
+}
+
+DOMAIN="${DOMAIN:-$(_env_get DOMAIN)}"
+DUCKDNS_TOKEN="${DUCKDNS_TOKEN:-$(_env_get DUCKDNS_TOKEN)}"
+DUCKDNS_IFACE="${DUCKDNS_IFACE:-$(_env_get DUCKDNS_IFACE)}"
 
 : "${DOMAIN:?[duckdns] DOMAIN not set in .env}"
 
