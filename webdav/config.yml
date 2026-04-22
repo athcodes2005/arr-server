@@ -1,35 +1,17 @@
-# hacdias/webdav configuration. See https://github.com/hacdias/webdav
+# This file is rewritten on the Pi by scripts/bootstrap-remote.sh during
+# every deploy so it can safely inject the current WebDAV credentials.
 #
-# The server shares the downloaded media library read-only. Access is proxied
-# by Caddy under https://${DOMAIN}/webdav/ with basic auth handled by this
-# server (not Caddy). Credentials are pulled from the container's environment,
-# which docker-compose injects from .env on the Pi.
+# The deployed config uses dufs, which serves the media tree read-only and
+# supports both browser navigation and WebDAV clients on the same /webdav/
+# path. The committed copy here is only a non-secret reference template.
 
-address: 0.0.0.0
+serve-path: /media
+bind: 0.0.0.0
 port: 6065
-
-# Caddy reverse-proxies /webdav/* to this service and preserves the prefix,
-# so the server must know it is mounted at /webdav and must trust
-# X-Forwarded-* headers from the proxy.
-prefix: /webdav
-behindProxy: true
-
-# Read-only share of the media library. The bind mount in docker-compose.yml
-# already maps ./data/media -> /media as read-only, so even if permissions
-# were widened here clients still could not write.
-directory: /media
-permissions: R
-
-# Note on browsers: WebDAV is a protocol for file-manager clients (Finder,
-# Kodi, VLC, Cyberduck). A plain browser GET on /webdav/ returns the
-# protocol-native XML PROPFIND-style listing — that is correct and working
-# behaviour, not an error. hacdias/webdav does not ship an HTML renderer.
-# To browse in Finder use Cmd+K and connect to https://${DOMAIN}/webdav/.
-
-# Credentials are interpolated from the container's environment at start.
-# Docker Compose passes WEBDAV_USERNAME and WEBDAV_PASSWORD from .env,
-# which bootstrap-remote.sh backs onto the qBittorrent web-UI credentials
-# if WEBDAV_* are left blank.
-users:
-  - username: "{env}WEBDAV_USERNAME"
-    password: "{env}WEBDAV_PASSWORD"
+path-prefix: /webdav
+allow-search: true
+hidden:
+  - ".gitkeep"
+auth:
+  - "admin:change-me@/"
+log-format: '$remote_addr $remote_user "$request" $status $http_user_agent'

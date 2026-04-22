@@ -78,11 +78,14 @@ http:// {
 
 	# WebDAV share of the media library. The server itself is configured with
 	# prefix: /webdav, so we forward the path intact (no handle_path strip).
-	# reverse_proxy already relays WebDAV methods (PROPFIND/MKCOL/COPY/MOVE/
-	# LOCK/UNLOCK) and the Destination header unchanged.
+	# The backend now serves both a browser UI and WebDAV from the same route.
+	# flush_interval -1 enables Caddy's low-latency mode for ranged video
+	# streaming, disabling proxy response buffering on this path.
 	@webdav path /webdav /webdav/*
 	handle @webdav {
-		reverse_proxy webdav:6065
+		reverse_proxy webdav:6065 {
+			flush_interval -1
+		}
 	}
 
 	handle {

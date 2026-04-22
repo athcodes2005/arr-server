@@ -144,15 +144,12 @@ services:
       - arr_net
 
   webdav:
-    # Lightweight Go-native WebDAV server (hacdias/webdav). Exposes the
-    # downloaded media library read-only so other devices on the network can
-    # browse / stream it via Finder, VLC, Kodi, etc.
-    image: ghcr.io/hacdias/webdav:latest
+    # Browser-friendly file server with built-in WebDAV support. The same
+    # /webdav/ path now works for both WebDAV clients and normal browsers.
+    image: sigoden/dufs:latest
     restart: unless-stopped
     environment:
       TZ: ${TZ}
-      WEBDAV_USERNAME: ${WEBDAV_USERNAME}
-      WEBDAV_PASSWORD: ${WEBDAV_PASSWORD}
     command: ["-c", "/config.yml"]
     volumes:
       - ./webdav/config.yml:/config.yml:ro

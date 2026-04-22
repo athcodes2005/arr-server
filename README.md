@@ -12,7 +12,8 @@ The stack currently includes:
 - Radarr
 - Bazarr
 - Byparr (FlareSolverr-compatible indexer proxy, lighter on RAM)
-- WebDAV (read-only share of the media library for Finder / VLC / Kodi)
+- WebDAV (browser-friendly, read-only share of the media library for Finder /
+  VLC / Kodi)
 
 Public entrypoint:
 
@@ -263,12 +264,16 @@ installed cron entry is removed.
 
 ## WebDAV media share
 
-The stack exposes `./data/media` (movies + tv) read-only over WebDAV at:
+The stack exposes `./data/media` (movies + tv) read-only at:
 
 - `https://yourhost.duckdns.org/webdav/`
 
-The server is `hacdias/webdav` (Go, tiny RAM footprint) behind Caddy. Auth is
-basic auth; credentials come from `.env`:
+The server is `dufs`, which serves the same path in two ways:
+
+- normal browser navigation and direct downloads at `/webdav/`
+- WebDAV methods for Finder / VLC / Kodi / Cyberduck against the same `/webdav/` path
+
+Auth is basic auth; credentials come from `.env`:
 
 - `WEBDAV_USERNAME`
 - `WEBDAV_PASSWORD`
@@ -277,17 +282,20 @@ If those are left blank, bootstrap falls back to `QBITTORRENT_WEBUI_USERNAME`
 / `QBITTORRENT_WEBUI_PASSWORD` — the same "admin / master password" you use
 for the rest of the stack (matching the `ARR_AUTH_*` fallback pattern).
 
-Permissions are fixed at `R` (read-only) in `webdav/config.yml` and the bind
-mount in `docker-compose.yml` is also mounted `:ro`, so clients cannot modify
-the arr-managed library even if the config is edited.
+Permissions stay read-only because the generated `webdav/config.yml` grants
+read access only, and the bind mount in `docker-compose.yml` is also mounted
+`:ro`, so clients cannot modify the arr-managed library even if the config is
+edited.
 
-### Why does `/webdav/` look like raw XML in a browser?
+### Browser access
 
-That is WebDAV working correctly, not an error. WebDAV is a protocol for
-file-manager clients (Finder, Kodi, VLC, Cyberduck), not web browsers. When a
-browser does a plain `GET` on a collection URL, the server responds with the
-protocol-native multistatus XML listing. Browsers have no idea how to render
-it, so they dump the tree verbatim. Open it in a real WebDAV client instead.
+Open:
+
+- `https://yourhost.duckdns.org/webdav/`
+
+After authenticating, the browser gets a directory UI instead of raw XML, so
+the media tree can be navigated and individual files can be downloaded
+directly.
 
 ### Connecting clients
 
@@ -314,6 +322,13 @@ curl -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" https://yourhost.duckdns.org/webdav/
 ```
 
 A listing of `movies/` and `tv/` should come back.
+
+### Streaming notes
+
+The Caddy reverse proxy is configured with `flush_interval -1` on the
+`/webdav/` route, which enables low-latency proxying and disables response
+buffering for ranged media reads. This is specifically to make remote video
+streaming smoother for clients that aggressively seek or re-open byte ranges.
 
 ### Changing permissions
 
