@@ -23,12 +23,10 @@ services:
       - sonarr
       - radarr
       - bazarr
-      - webdav
+      - jellyfin
     environment:
       DOMAIN: ${DOMAIN}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
-      WEBDAV_USERNAME: ${WEBDAV_USERNAME}
-      WEBDAV_PASSWORD_HASH: ${WEBDAV_PASSWORD_HASH}
     ports:
       - "80:80"
       - "443:443"
@@ -49,6 +47,7 @@ services:
       - sonarr
       - radarr
       - bazarr
+      - jellyfin
     environment:
       HOMEPAGE_ALLOWED_HOSTS: ${DOMAIN}
       HOMEPAGE_VAR_QBITTORRENT_USERNAME: ${QBITTORRENT_WEBUI_USERNAME}
@@ -57,6 +56,7 @@ services:
       HOMEPAGE_VAR_SONARR_API_KEY: ${SONARR_API_KEY}
       HOMEPAGE_VAR_RADARR_API_KEY: ${RADARR_API_KEY}
       HOMEPAGE_VAR_BAZARR_API_KEY: ${BAZARR_API_KEY}
+      HOMEPAGE_VAR_JELLYFIN_API_KEY: ${JELLYFIN_API_KEY}
     volumes:
       - ./homepage/config:/app/config
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -145,17 +145,15 @@ services:
     networks:
       - arr_net
 
-  webdav:
-    # Browser-friendly file server with built-in WebDAV support. The same
-    # /webdav/ path now works for both WebDAV clients and normal browsers.
-    image: sigoden/dufs:latest
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
     restart: unless-stopped
     environment:
-      TZ: ${TZ}
-    command: ["-c", "/config.yml"]
+      <<: *common-env
+      JELLYFIN_PublishedServerUrl: https://${DOMAIN}/jellyfin
     volumes:
-      - ./webdav/config.yml:/config.yml:ro
-      - ./data/media:/media:ro
+      - ./jellyfin/config:/config
+      - ./data/media:/data/media:ro
     logging: *default-logging
     networks:
       - arr_net

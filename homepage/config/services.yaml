@@ -50,9 +50,12 @@
         description: Indexer proxy (FlareSolverr-compatible)
         container: arr-server-byparr-1
         ping: http://byparr:8191/
-    - WebDAV:
-        icon: mdi-folder-network-outline
-        href: /webdav/
-        description: Media library browser + WebDAV (read-only)
-        container: arr-server-webdav-1
-        ping: http://webdav:6065/webdav/
+    - Jellyfin:
+        icon: jellyfin.png
+        href: /jellyfin/
+        description: Media server
+        container: arr-server-jellyfin-1
+        widget:
+          type: jellyfin
+          url: http://jellyfin:8096/jellyfin
+          key: "{{HOMEPAGE_VAR_JELLYFIN_API_KEY}}"

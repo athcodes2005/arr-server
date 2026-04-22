@@ -12,8 +12,7 @@ The stack currently includes:
 - Radarr
 - Bazarr
 - Byparr (FlareSolverr-compatible indexer proxy, lighter on RAM)
-- WebDAV (browser-friendly, read-only share of the media library for Finder /
-  VLC / Kodi)
+- Jellyfin (media server with native Infuse / Kodi / browser support)
 
 Public entrypoint:
 
@@ -27,7 +26,7 @@ The app routes are path-based because DuckDNS gives you a single hostname:
 - `https://yourhost.duckdns.org/sonarr/`
 - `https://yourhost.duckdns.org/radarr/`
 - `https://yourhost.duckdns.org/bazarr/`
-- `https://yourhost.duckdns.org/webdav/`
+- `https://yourhost.duckdns.org/jellyfin/`
 
 ## Directory layout
 
@@ -63,10 +62,10 @@ arr-server/
 │   └── config/
 ├── radarr/
 │   └── data/
-├── sonarr/
-│   └── data/
-└── webdav/
-    └── config.yml
+├── jellyfin/
+│   └── config/
+└── sonarr/
+    └── data/
 ```
 
 ## Architecture
@@ -199,6 +198,7 @@ Then update Homepage widget API keys in `.env`:
 - `SONARR_API_KEY`
 - `RADARR_API_KEY`
 - `BAZARR_API_KEY`
+- `JELLYFIN_API_KEY` (see Jellyfin section below)
 
 Deploy again with:
 
@@ -262,82 +262,48 @@ ssh -6 youruser@yourhost.duckdns.org "journalctl -t duckdns -n 20 --no-pager"
 If `DUCKDNS_TOKEN` is left blank the updater is skipped and any previously
 installed cron entry is removed.
 
-## WebDAV media share
+## Jellyfin media server
 
-The stack exposes `./data/media` (movies + tv) read-only at:
+Jellyfin is available at:
 
-- `https://yourhost.duckdns.org/webdav/`
+- `https://yourhost.duckdns.org/jellyfin/`
 
-The server is `dufs`, which serves the same path in two ways:
+It reads the same `./data/media` tree that Sonarr and Radarr manage, mounted
+read-only. Jellyfin handles its own authentication and serves metadata, posters,
+and subtitles automatically.
 
-- normal browser navigation and direct downloads at `/webdav/`
-- WebDAV methods for Finder / VLC / Kodi / Cyberduck against the same `/webdav/` path
+### First boot setup
 
-Auth is basic auth; credentials come from `.env`:
+1. Open `https://yourhost.duckdns.org/jellyfin/` and complete the setup wizard.
+2. **Set the base URL** so path-based proxying works:
+   - Dashboard → Networking → Base URL → `/jellyfin`
+   - Save and restart Jellyfin when prompted.
+3. **Add media libraries** during setup (or after via Dashboard → Libraries):
+   - Movies → `/data/media/movies`
+   - TV Shows → `/data/media/tv`
+4. **Copy the API key** for the Homepage widget:
+   - Dashboard → API Keys → + → name it `homepage`
+   - Add `JELLYFIN_API_KEY=<key>` to `.env` and redeploy.
 
-- `WEBDAV_USERNAME`
-- `WEBDAV_PASSWORD`
+### Connecting Infuse
 
-If those are left blank, bootstrap falls back to `QBITTORRENT_WEBUI_USERNAME`
-/ `QBITTORRENT_WEBUI_PASSWORD` — the same "admin / master password" you use
-for the rest of the stack (matching the `ARR_AUTH_*` fallback pattern).
+Infuse has native Jellyfin support — no WebDAV needed:
 
-Permissions stay read-only because the generated `webdav/config.yml` grants
-read access only, and the bind mount in `docker-compose.yml` is also mounted
-`:ro`, so clients cannot modify the arr-managed library even if the config is
-edited.
+1. Infuse → Settings → Add Library → Jellyfin (or Emby)
+2. Host: `yourhost.duckdns.org`
+3. Port: `443`, Path: `/jellyfin`
+4. Sign in with your Jellyfin username and password
 
-### Browser access
+Infuse will pull metadata, posters, and watched state directly from Jellyfin
+and use direct play for content that fits within your upload bandwidth.
 
-Open:
+### Connecting Kodi
 
-- `https://yourhost.duckdns.org/webdav/`
+- Add-ons → Jellyfin for Kodi → configure with `https://yourhost.duckdns.org/jellyfin`
 
-After authenticating, the browser gets a directory UI instead of raw XML, so
-the media tree can be navigated and individual files can be downloaded
-directly.
+### Browser
 
-### Connecting clients
-
-**macOS Finder**
-
-- `Cmd + K` → `Server Address: https://yourhost.duckdns.org/webdav/`
-- Connect As: Registered User → enter `WEBDAV_USERNAME` / `WEBDAV_PASSWORD`
-- The share mounts under `/Volumes/webdav`.
-
-**VLC**
-
-- Open Network → `https://yourhost.duckdns.org/webdav/` → enter credentials
-
-**Kodi**
-
-- Add Video Source → Browse → Add network location → `WebDAV server (HTTPS)`
-- Server name: `yourhost.duckdns.org`, Remote path: `webdav`, username +
-  password from `.env`
-
-**Command line (testing)**
-
-```bash
-curl -u "$WEBDAV_USERNAME:$WEBDAV_PASSWORD" https://yourhost.duckdns.org/webdav/
-```
-
-A listing of `movies/` and `tv/` should come back.
-
-### Streaming notes
-
-The Caddy reverse proxy is configured with `flush_interval -1` on the
-`/webdav/` route, which enables low-latency proxying and disables response
-buffering for ranged media reads. This is specifically to make remote video
-streaming smoother for clients that aggressively seek or re-open byte ranges.
-
-### Changing permissions
-
-If you later want a writable share (e.g. to upload files from another
-machine), edit `webdav/config.yml` and change `permissions: R` to `CRUD`,
-then drop the `:ro` flag on the `./data/media:/media` mount in
-`docker-compose.yml`. Redeploy with `./deploy.sh`. Be aware that clients
-writing into this tree may confuse Sonarr/Radarr if names collide with
-managed files.
+Full web player available at `https://yourhost.duckdns.org/jellyfin/`.
 
 ## Security hardening (manual steps on the Pi)
 
