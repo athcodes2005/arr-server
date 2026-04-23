@@ -65,8 +65,12 @@ if [ -z "${IPV6}" ]; then
 fi
 
 RESPONSE="$(curl -fsS -m 15 --retry 3 --retry-delay 2 \
-  "https://www.duckdns.org/update?domains=${SUBDOMAIN}&token=${DUCKDNS_TOKEN}&ipv6=${IPV6}" \
+  "https://www.duckdns.org/update?domains=${SUBDOMAIN}&token=${DUCKDNS_TOKEN}&ipv6=${IPV6}&ip=" \
   || true)"
+# &ip= is intentionally empty. When omitted, DuckDNS auto-detects the caller's
+# IPv4 and sets an A record, which is wrong for this stack — the Pi is only
+# reachable over IPv6. An empty ip parameter prevents the A record from being
+# touched on every update.
 
 if [ "${RESPONSE}" = "OK" ]; then
   printf '[duckdns] %s OK %s\n' "$(date -Is)" "${IPV6}"
