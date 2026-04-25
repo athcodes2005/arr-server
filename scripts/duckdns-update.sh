@@ -25,7 +25,9 @@ fi
 # a bcrypt hash starting with $2a$ which bash interprets as positional params,
 # causing `set -euo pipefail` to abort on the unbound variable error.
 _env_get() {
-  grep -m1 "^${1}=" "${ENV_FILE}" | cut -d= -f2-
+  # grep exits 1 when the key is absent. With set -eo pipefail that would
+  # abort the script. || true makes a missing key return empty string instead.
+  grep -m1 "^${1}=" "${ENV_FILE}" | cut -d= -f2- || true
 }
 
 DOMAIN="${DOMAIN:-$(_env_get DOMAIN)}"
