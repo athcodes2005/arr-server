@@ -595,6 +595,9 @@ main() {
   log "Installing DuckDNS auto-updater"
   install_duckdns_updater
 
+  log "Configuring unattended-upgrades"
+  bash "${ROOT_DIR}/scripts/install-unattended-upgrades.sh"
+
   # rsync --inplace (see deploy.sh) keeps the Caddyfile inode stable so the
   # container's bind mount stays live across deploys, but Caddy still needs
   # to be told to re-read the file. Ignore the reload error if caddy happens

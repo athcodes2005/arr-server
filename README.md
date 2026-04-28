@@ -262,6 +262,36 @@ ssh -6 youruser@yourhost.duckdns.org "journalctl -t duckdns -n 20 --no-pager"
 If `DUCKDNS_TOKEN` is left blank the updater is skipped and any previously
 installed cron entry is removed.
 
+## Unattended security upgrades
+
+`scripts/install-unattended-upgrades.sh` is run by `bootstrap-remote.sh` on
+every deploy. It configures the Pi to apply OS security patches and stable
+kernel updates without manual intervention:
+
+- Allowed sources: Debian `stable-security`, Debian `stable-updates`, and the
+  Raspberry Pi Foundation `stable` channel only. Bleeding-edge `rpi-update`
+  GitHub kernel builds are never pulled.
+- Schedule (avoids the 03:00 home-router reboot window):
+  - `04:00 ± 15 min` — `apt-daily` refreshes package lists
+  - `04:30 ± 10 min` — `apt-daily-upgrade` applies updates
+  - `05:00`           — automatic reboot if a kernel/libc/dbus update needs one
+- Third-party repos (Docker CE, etc.) are NOT auto-upgraded; you stay in
+  control of those via manual `apt upgrade`.
+
+Inspect what would apply on the next run:
+
+```bash
+ssh -6 youruser@yourhost.duckdns.org \
+  "sudo unattended-upgrade --dry-run -d 2>&1 | grep 'pkgs that look'"
+```
+
+History of what was applied while you were away:
+
+```bash
+ssh -6 youruser@yourhost.duckdns.org \
+  "sudo journalctl -u unattended-upgrades --since '7 days ago' --no-pager"
+```
+
 ## Jellyfin media server
 
 Jellyfin is available at:
